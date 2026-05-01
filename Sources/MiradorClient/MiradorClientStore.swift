@@ -6,12 +6,19 @@ import MiradorCore
 @MainActor
 @Observable
 public final class MiradorClientStore {
-    public private(set) var hosts: [DiscoveredHost] = []
-    public private(set) var browserStatus = "Idle"
-    public private(set) var selectedHost: DiscoveredHost?
+    public internal(set) var hosts: [DiscoveredHost] = []
+    public internal(set) var browserStatus = "Idle"
+    public internal(set) var selectedHost: DiscoveredHost?
+    public internal(set) var connectionStatus = "Not connected"
+    public internal(set) var authenticationStatus = "Enter the host PIN"
+    public internal(set) var hostStatus: HostStatus?
+    public internal(set) var latestFrame: PreviewFrame?
+    public internal(set) var receivedFrames = 0
+    public var pinEntry = ""
 
     @ObservationIgnored private var browser: NWBrowser?
-    @ObservationIgnored private var resultsByID: [String: NWBrowser.Result] = [:]
+    @ObservationIgnored var resultsByID: [String: NWBrowser.Result] = [:]
+    @ObservationIgnored var connection: ClientConnection?
 
     public init() {}
 
@@ -61,11 +68,9 @@ public final class MiradorClientStore {
     }
 
     public func select(_ host: DiscoveredHost) {
+        disconnect()
         selectedHost = host
-    }
-
-    public func connectionEndpoint(for host: DiscoveredHost) -> NWEndpoint? {
-        resultsByID[host.id]?.endpoint
+        authenticationStatus = "Enter the host PIN"
     }
 
     nonisolated private static func statusDescription(for state: NWBrowser.State) -> String {

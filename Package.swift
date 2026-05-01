@@ -18,9 +18,13 @@ let package = Package(
             name: "MiradorClient",
             targets: ["MiradorClient"]
         ),
+        .library(
+            name: "MiradorHost",
+            targets: ["MiradorHost"]
+        ),
         .executable(
             name: "mirador-host",
-            targets: ["MiradorHost"]
+            targets: ["MiradorHostExecutable"]
         )
     ],
     targets: [
@@ -31,9 +35,13 @@ let package = Package(
             name: "MiradorClient",
             dependencies: ["MiradorCore"]
         ),
-        .executableTarget(
+        .target(
             name: "MiradorHost",
             dependencies: ["MiradorCore"]
+        ),
+        .executableTarget(
+            name: "MiradorHostExecutable",
+            dependencies: ["MiradorHost"]
         ),
         .testTarget(
             name: "MiradorCoreTests",

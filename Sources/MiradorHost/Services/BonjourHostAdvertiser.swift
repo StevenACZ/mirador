@@ -4,10 +4,13 @@ import MiradorCore
 
 final class BonjourHostAdvertiser: @unchecked Sendable {
     var onStateChange: ((String) -> Void)?
-    var onAuthenticated: (() -> Void)?
+    var onAuthenticated: ((HostClientSession) -> Void)?
+    var onPreviewStopped: (() -> Void)?
+    var onConnectionClosed: ((HostClientSession) -> Void)?
 
     private var listener: NWListener?
     private var sessionPIN: SessionPIN?
+    private var sessions: [UUID: HostClientSession] = [:]
 
     func start(pin: SessionPIN) throws {
         stop()
@@ -36,94 +39,40 @@ final class BonjourHostAdvertiser: @unchecked Sendable {
     }
 
     func stop() {
+        sessions.values.forEach { $0.cancel() }
+        sessions = [:]
         listener?.cancel()
         listener = nil
     }
 
     private func handle(_ connection: NWConnection) {
-        connection.stateUpdateHandler = { [weak self] state in
-            if case let .failed(error) = state {
-                self?.onStateChange?("Connection failed: \(error.localizedDescription)")
-            }
-        }
-
-        connection.start(queue: .main)
-        sendHostStatus(on: connection)
-        receiveHeader(on: connection)
-    }
-
-    private func sendHostStatus(on connection: NWConnection) {
-        let status = HostStatus(
+        let session = HostClientSession(
+            connection: connection,
             hostName: Host.current().localizedName ?? MiradorConstants.appName,
-            isCaptureActive: false
+            pinProvider: { [weak self] in self?.sessionPIN }
         )
-        send(.hostStatus(status), on: connection)
-    }
 
-    private func receiveHeader(on connection: NWConnection) {
-        connection.receive(
-            minimumIncompleteLength: LengthPrefixedMessageCodec.headerLength,
-            maximumLength: LengthPrefixedMessageCodec.headerLength
-        ) { [weak self] data, _, isComplete, error in
-            guard error == nil, !isComplete, let data else {
-                return
-            }
-
-            do {
-                let payloadLength = try LengthPrefixedMessageCodec.decodeLengthHeader(data)
-                self?.receivePayload(length: payloadLength, on: connection)
-            } catch {
-                self?.send(.error(ErrorMessage(code: "invalid_header", message: error.localizedDescription)), on: connection)
-            }
+        session.onStateChange = { [weak self] status in
+            self?.onStateChange?(status)
         }
-    }
 
-    private func receivePayload(length: Int, on connection: NWConnection) {
-        connection.receive(minimumIncompleteLength: length, maximumLength: length) { [weak self] data, _, _, error in
-            guard error == nil, let data else {
-                return
-            }
-
-            do {
-                let message = try LengthPrefixedMessageCodec.decode(SignalingMessage.self, from: data)
-                self?.handle(message, on: connection)
-                self?.receiveHeader(on: connection)
-            } catch {
-                self?.send(.error(ErrorMessage(code: "invalid_payload", message: error.localizedDescription)), on: connection)
-            }
+        session.onAuthenticated = { [weak self, weak session] in
+            guard let session else { return }
+            self?.onAuthenticated?(session)
         }
-    }
 
-    private func handle(_ message: SignalingMessage, on connection: NWConnection) {
-        switch message {
-        case let .authenticate(authentication):
-            guard let sessionPIN else {
-                send(.authenticationResult(AuthenticationResult(accepted: false, reason: "No active PIN")), on: connection)
-                return
-            }
-
-            if sessionPIN.matches(authentication.pin) {
-                send(.authenticationResult(AuthenticationResult(accepted: true)), on: connection)
-                onAuthenticated?()
-            } else {
-                send(.authenticationResult(AuthenticationResult(accepted: false, reason: "Invalid PIN")), on: connection)
-            }
-
-        case .hello, .hostStatus, .authenticationResult, .startPreview, .stopPreview:
-            sendHostStatus(on: connection)
-
-        case .error:
-            break
+        session.onPreviewStopped = { [weak self] in
+            self?.onPreviewStopped?()
         }
-    }
 
-    private func send(_ message: SignalingMessage, on connection: NWConnection) {
-        do {
-            let packet = try LengthPrefixedMessageCodec.encode(message)
-            connection.send(content: packet, completion: .contentProcessed { _ in })
-        } catch {
-            onStateChange?("Encoding failed: \(error.localizedDescription)")
+        session.onClosed = { [weak self, weak session] in
+            guard let self, let session else { return }
+            self.sessions[session.id] = nil
+            self.onConnectionClosed?(session)
         }
+
+        sessions[session.id] = session
+        session.start()
     }
 
     private static func statusDescription(for state: NWListener.State) -> String {

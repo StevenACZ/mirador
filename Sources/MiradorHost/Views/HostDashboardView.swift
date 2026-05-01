@@ -1,26 +1,19 @@
 import SwiftUI
 import MiradorCore
 
-struct HostDashboardView: View {
+public struct HostDashboardView: View {
     @Bindable var controller: HostController
 
-    var body: some View {
-        NavigationSplitView {
-            List {
-                Section("Host") {
-                    Label(controller.networkStatus, systemImage: "antenna.radiowaves.left.and.right")
-                    Label(controller.permissionStatus, systemImage: "lock.shield")
-                    Label(controller.captureStatus, systemImage: "display")
-                }
+    public init(controller: HostController) {
+        self.controller = controller
+    }
 
-                Section("MVP1") {
-                    Label("Bonjour: \(MiradorConstants.bonjourServiceType)", systemImage: "network")
-                    Label("\(MiradorConstants.mvpFrameRate) FPS target", systemImage: "speedometer")
-                }
-            }
-            .listStyle(.sidebar)
-            .navigationTitle(MiradorConstants.appName)
-        } detail: {
+    public var body: some View {
+        HStack(spacing: 0) {
+            sidebar
+
+            Divider()
+
             VStack(alignment: .leading, spacing: 24) {
                 header
                 pinPanel
@@ -30,6 +23,52 @@ struct HostDashboardView: View {
             }
             .padding(28)
         }
+        .frame(minWidth: 760, minHeight: 520)
+    }
+
+    private var sidebar: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text(MiradorConstants.appName)
+                .font(.title2.weight(.semibold))
+
+            statusGroup(
+                title: "Host",
+                rows: [
+                    ("antenna.radiowaves.left.and.right", controller.networkStatus),
+                    ("lock.shield", controller.permissionStatus),
+                    ("display", controller.captureStatus)
+                ]
+            )
+
+            statusGroup(
+                title: "MVP1",
+                rows: [
+                    ("network", "Bonjour: \(MiradorConstants.bonjourServiceType)"),
+                    ("speedometer", "\(MiradorConstants.mvpFrameRate) FPS target"),
+                    ("photo.on.rectangle", "\(controller.streamedFrames) frames sent")
+                ]
+            )
+
+            Spacer()
+        }
+        .padding(22)
+        .frame(width: 250, alignment: .topLeading)
+        .background(.bar)
+    }
+
+    private func statusGroup(title: String, rows: [(String, String)]) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            ForEach(rows, id: \.1) { image, text in
+                Label(text, systemImage: image)
+                    .font(.callout)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
 
     private var header: some View {
@@ -37,7 +76,7 @@ struct HostDashboardView: View {
             Text("Mac Host")
                 .font(.largeTitle.weight(.semibold))
 
-            Text("The listener is lightweight while idle. Screen capture starts only after a client authenticates with the current PIN.")
+            Text("Screen capture stays idle until a client authenticates with the current PIN.")
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -51,10 +90,6 @@ struct HostDashboardView: View {
             Text(controller.sessionPIN.value)
                 .font(.system(size: 44, weight: .semibold, design: .monospaced))
                 .contentTransition(.numericText())
-
-            Text("Use this PIN from the iPhone or iPad for the MVP1 session.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -101,12 +136,9 @@ struct HostDashboardView: View {
                 .font(.headline)
 
             if controller.displays.isEmpty {
-                ContentUnavailableView(
-                    "No Display Session Yet",
-                    systemImage: "display",
-                    description: Text("Displays are loaded after a client authenticates.")
-                )
-                .frame(maxWidth: .infinity, minHeight: 120)
+                Label("No display session yet", systemImage: "display")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, minHeight: 120)
             } else {
                 ForEach(controller.displays) { display in
                     HStack {

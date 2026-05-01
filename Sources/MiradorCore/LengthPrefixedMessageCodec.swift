@@ -7,7 +7,7 @@ public enum LengthPrefixedMessageCodec {
     }
 
     public static let headerLength = 4
-    public static let maximumPayloadLength = 1_048_576
+    public static let maximumPayloadLength = 4_194_304
 
     public static func encode<Message: Encodable>(_ message: Message) throws -> Data {
         let payload = try JSONEncoder.mirador.encode(message)

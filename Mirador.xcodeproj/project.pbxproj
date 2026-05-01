@@ -1,0 +1,491 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 60;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		349E3B6504E1DA2680C04681 /* MiradorHost in Frameworks */ = {isa = PBXBuildFile; productRef = C5E19389D7934A3B24B19DEB /* MiradorHost */; };
+		712A418D9EC12045A234DCE2 /* MiradorClient in Frameworks */ = {isa = PBXBuildFile; productRef = 12495B7A1E0CBEE56A6B3AF4 /* MiradorClient */; };
+		9A87B894FBB0CFD00CCA1688 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F1192CAF5653AE69BBAD8164 /* Cocoa.framework */; };
+		AF0E6FBC6838F737F58C5B6E /* MiradorClientApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 328ECC5CD519F8C9E5132393 /* MiradorClientApp.swift */; };
+		B1EC5300D9F4B71FD7D5884C /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 84B3960F3AC4F034B9D57DF6 /* Foundation.framework */; };
+		B572AFD43944ECFDB18D7EBE /* MiradorHostApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F23C3186A3773729FF17F62F /* MiradorHostApp.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		2AC430DDF87BB2CAABF79FF6 /* Mirador Host.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = "Mirador Host.app"; path = MiradorHostApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		328ECC5CD519F8C9E5132393 /* MiradorClientApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MiradorClientApp.swift; sourceTree = "<group>"; };
+		7825F635F2905C840698495B /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		84B3960F3AC4F034B9D57DF6 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		9BADDF1008A56B73AF97C3DC /* MiradorClientApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MiradorClientApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AEC0556435EFBAB39E2A628D /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		F1192CAF5653AE69BBAD8164 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.0.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
+		F23C3186A3773729FF17F62F /* MiradorHostApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MiradorHostApp.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		060619BEE61C680572FE24D3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9A87B894FBB0CFD00CCA1688 /* Cocoa.framework in Frameworks */,
+				349E3B6504E1DA2680C04681 /* MiradorHost in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4F5E96F1EDA272610976A6C9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B1EC5300D9F4B71FD7D5884C /* Foundation.framework in Frameworks */,
+				712A418D9EC12045A234DCE2 /* MiradorClient in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		045477B7F393F3250D595B6A /* Apps */ = {
+			isa = PBXGroup;
+			children = (
+				4D4B5C885ACC4221350A6873 /* MiradorHostApp */,
+				19223E875785B18E1B81DB8B /* MiradorClientApp */,
+			);
+			path = Apps;
+			sourceTree = "<group>";
+		};
+		19223E875785B18E1B81DB8B /* MiradorClientApp */ = {
+			isa = PBXGroup;
+			children = (
+				328ECC5CD519F8C9E5132393 /* MiradorClientApp.swift */,
+				7825F635F2905C840698495B /* Info.plist */,
+			);
+			path = MiradorClientApp;
+			sourceTree = "<group>";
+		};
+		4D4B5C885ACC4221350A6873 /* MiradorHostApp */ = {
+			isa = PBXGroup;
+			children = (
+				F23C3186A3773729FF17F62F /* MiradorHostApp.swift */,
+				AEC0556435EFBAB39E2A628D /* Info.plist */,
+			);
+			path = MiradorHostApp;
+			sourceTree = "<group>";
+		};
+		65112014DF7D1BE34E92A6EC /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				2AC430DDF87BB2CAABF79FF6 /* Mirador Host.app */,
+				9BADDF1008A56B73AF97C3DC /* MiradorClientApp.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		712AD0D65B97AF7529072213 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				BC4A53F135886254B218750C /* OS X */,
+				A437C24DEA3F18227ACD1281 /* iOS */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		A437C24DEA3F18227ACD1281 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				84B3960F3AC4F034B9D57DF6 /* Foundation.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
+		BC4A53F135886254B218750C /* OS X */ = {
+			isa = PBXGroup;
+			children = (
+				F1192CAF5653AE69BBAD8164 /* Cocoa.framework */,
+			);
+			name = "OS X";
+			sourceTree = "<group>";
+		};
+		BF20B80E0FC6EE01B560E8E9 = {
+			isa = PBXGroup;
+			children = (
+				65112014DF7D1BE34E92A6EC /* Products */,
+				712AD0D65B97AF7529072213 /* Frameworks */,
+				045477B7F393F3250D595B6A /* Apps */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		19E18055A886ED8C80E1A7E2 /* MiradorClientApp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0D7094DFE8707F3254C68B4E /* Build configuration list for PBXNativeTarget "MiradorClientApp" */;
+			buildPhases = (
+				DD04C444E063629BC3EA583C /* Sources */,
+				4F5E96F1EDA272610976A6C9 /* Frameworks */,
+				EEFEAD4CFAB7E4A8C09064C6 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MiradorClientApp;
+			packageProductDependencies = (
+				12495B7A1E0CBEE56A6B3AF4 /* MiradorClient */,
+			);
+			productName = Mirador;
+			productReference = 9BADDF1008A56B73AF97C3DC /* MiradorClientApp.app */;
+			productType = "com.apple.product-type.application";
+		};
+		9D9876133D61821E54250052 /* MiradorHostApp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C53F3423C06C3D0FCAAAE907 /* Build configuration list for PBXNativeTarget "MiradorHostApp" */;
+			buildPhases = (
+				AFB7844C8FDC316555B49BE7 /* Sources */,
+				060619BEE61C680572FE24D3 /* Frameworks */,
+				ED9BD1B96957DF29D9DA458D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MiradorHostApp;
+			packageProductDependencies = (
+				C5E19389D7934A3B24B19DEB /* MiradorHost */,
+			);
+			productName = "Mirador Host";
+			productReference = 2AC430DDF87BB2CAABF79FF6 /* Mirador Host.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		170B2246E1F594396D141BB9 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+			};
+			buildConfigurationList = 2A381255691AD198AAA2A572 /* Build configuration list for PBXProject "Mirador" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = BF20B80E0FC6EE01B560E8E9;
+			packageReferences = (
+				06EF108BDA3896AF7643B4C9 /* XCLocalSwiftPackageReference "." */,
+			);
+			productRefGroup = 65112014DF7D1BE34E92A6EC /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				9D9876133D61821E54250052 /* MiradorHostApp */,
+				19E18055A886ED8C80E1A7E2 /* MiradorClientApp */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		ED9BD1B96957DF29D9DA458D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EEFEAD4CFAB7E4A8C09064C6 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		AFB7844C8FDC316555B49BE7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B572AFD43944ECFDB18D7EBE /* MiradorHostApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DD04C444E063629BC3EA583C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AF0E6FBC6838F737F58C5B6E /* MiradorClientApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		9F997118BFFC105595048911 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		9FE187C33797447F5DADC779 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Apps/MiradorClientApp/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.stevenacz.mirador.client;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		A96BCFC85073EE794F7672B8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Apps/MiradorClientApp/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.stevenacz.mirador.client;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		DEA8B7C258675540E680F50E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Apps/MiradorHostApp/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.stevenacz.mirador.host;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		DED880E57B13C88566C39A37 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Apps/MiradorHostApp/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.stevenacz.mirador.host;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		E1A5C9EF8F658DE1398C7E79 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		0D7094DFE8707F3254C68B4E /* Build configuration list for PBXNativeTarget "MiradorClientApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9FE187C33797447F5DADC779 /* Release */,
+				A96BCFC85073EE794F7672B8 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		2A381255691AD198AAA2A572 /* Build configuration list for PBXProject "Mirador" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E1A5C9EF8F658DE1398C7E79 /* Debug */,
+				9F997118BFFC105595048911 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C53F3423C06C3D0FCAAAE907 /* Build configuration list for PBXNativeTarget "MiradorHostApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DED880E57B13C88566C39A37 /* Release */,
+				DEA8B7C258675540E680F50E /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		06EF108BDA3896AF7643B4C9 /* XCLocalSwiftPackageReference "." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = .;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		12495B7A1E0CBEE56A6B3AF4 /* MiradorClient */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 06EF108BDA3896AF7643B4C9 /* XCLocalSwiftPackageReference "." */;
+			productName = MiradorClient;
+		};
+		C5E19389D7934A3B24B19DEB /* MiradorHost */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 06EF108BDA3896AF7643B4C9 /* XCLocalSwiftPackageReference "." */;
+			productName = MiradorHost;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 170B2246E1F594396D141BB9 /* Project object */;
+}

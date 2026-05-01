@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import MiradorHost
 
 @main
 struct MiradorHostApp: App {

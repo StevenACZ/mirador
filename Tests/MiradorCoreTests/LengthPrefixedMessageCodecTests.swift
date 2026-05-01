@@ -18,4 +18,21 @@ struct LengthPrefixedMessageCodecTests {
         let decoded = try LengthPrefixedMessageCodec.decode(SignalingMessage.self, from: Data(payload))
         #expect(decoded == message)
     }
+
+    @Test("Round-trips preview frame payloads")
+    func previewFrameRoundTrip() throws {
+        let frame = PreviewFrame(
+            sequence: 7,
+            capturedAt: Date(timeIntervalSince1970: 10),
+            width: 640,
+            height: 360,
+            jpegData: Data([0xFF, 0xD8, 0xFF])
+        )
+        let message = SignalingMessage.previewFrame(frame)
+        let packet = try LengthPrefixedMessageCodec.encode(message)
+        let payload = packet.dropFirst(LengthPrefixedMessageCodec.headerLength)
+
+        let decoded = try LengthPrefixedMessageCodec.decode(SignalingMessage.self, from: Data(payload))
+        #expect(decoded == message)
+    }
 }
