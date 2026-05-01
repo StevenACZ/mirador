@@ -1,0 +1,44 @@
+.DS_Store
+
+# SwiftPM
+.build/
+.swiftpm/
+
+# Xcode
+DerivedData/
+build/
+*.xcuserdata/
+*.xcuserstate
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# Local planning and private notes
+/docs/
+/Docs/
+/.codex/
+/AGENTS.md
+/agents.md
+/cloud.md
+/CLOUD.md
+/CLAUDE.md
+/clavo.md
+
+# App artifacts
+*.dmg
+*.ipa
+*.xcarchive
+
+# Private/local scripts
+/scripts/local/
+/scripts/private/
+/scripts/*.local.sh
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
