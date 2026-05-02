@@ -142,6 +142,11 @@ extension HostController {
         )
     }
 
+    func sendHostStatus(to session: HostClientSession) {
+        let isCaptureActive = activePreviewSessionID == session.id && previewTask != nil
+        session.sendHostStatus(hostStatus(isCaptureActive: isCaptureActive))
+    }
+
     private func sendNextPreviewFrame(to session: HostClientSession) async throws {
         let sequence = nextFrameSequence
         nextFrameSequence += 1

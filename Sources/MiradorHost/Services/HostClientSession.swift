@@ -7,6 +7,7 @@ final class HostClientSession: @unchecked Sendable, Identifiable {
 
     var onStateChange: ((String) -> Void)?
     var onAuthenticated: ((HostClientSession) -> Void)?
+    var onHostStatusRequested: ((HostClientSession) -> Void)?
     var onPreviewRequested: ((HostClientSession, DisplaySelection) -> Void)?
     var onPreviewStopped: ((HostClientSession) -> Void)?
     var onRemoteInput: ((HostClientSession, RemoteInputEvent) async -> Bool)?

@@ -44,9 +44,8 @@ extension HostClientSession {
         switch message {
         case let .hello(hello):
             handleHello(hello)
-            sendHostStatus(isCaptureActive: isAuthenticated)
         case .hostStatus:
-            sendHostStatus(isCaptureActive: isAuthenticated)
+            handleHostStatusRequest()
         case let .startPreview(selection):
             handlePreviewRequest(selection)
         case .stopPreview:
@@ -57,6 +56,11 @@ extension HostClientSession {
         case .authenticationResult, .previewFrame, .streamStats, .error:
             break
         }
+    }
+
+    func handleHostStatusRequest() {
+        guard isAuthenticated else { return }
+        onHostStatusRequested?(self)
     }
 
     func handleHello(_ hello: ClientHello) {

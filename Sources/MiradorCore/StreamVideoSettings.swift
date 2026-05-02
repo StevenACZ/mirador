@@ -52,11 +52,23 @@ public enum StreamFrameRatePreset: Int, Codable, CaseIterable, Identifiable, Sen
 
 public struct StreamVideoSettings: Codable, Equatable, Sendable {
     public static let minimumBitrateMegabitsPerSecond = 0.5
-    public static let maximumBitrateMegabitsPerSecond = 150.0
+    public static let maximumBitrateMegabitsPerSecond = 60.0
+    public static let minimumTransportJPEGQuality = 0.08
+    public static let previewPayloadSafetyMarginBytes = 64 * 1_024
+    public static let maximumJPEGPayloadBytes = max(
+        1,
+        LengthPrefixedMessageCodec.maximumPayloadLength - previewPayloadSafetyMarginBytes
+    )
 
     public let resolution: StreamResolutionPreset
     public let frameRate: StreamFrameRatePreset
     public let bitrateMegabitsPerSecond: Double
+
+    private enum CodingKeys: String, CodingKey {
+        case resolution
+        case frameRate
+        case bitrateMegabitsPerSecond
+    }
 
     public init(
         resolution: StreamResolutionPreset = .p720,
@@ -66,6 +78,24 @@ public struct StreamVideoSettings: Codable, Equatable, Sendable {
         self.resolution = resolution
         self.frameRate = frameRate
         self.bitrateMegabitsPerSecond = Self.clampedBitrate(bitrateMegabitsPerSecond)
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            resolution: try container.decodeIfPresent(
+                StreamResolutionPreset.self,
+                forKey: .resolution
+            ) ?? .p720,
+            frameRate: try container.decodeIfPresent(
+                StreamFrameRatePreset.self,
+                forKey: .frameRate
+            ) ?? .fps60,
+            bitrateMegabitsPerSecond: try container.decodeIfPresent(
+                Double.self,
+                forKey: .bitrateMegabitsPerSecond
+            ) ?? 8
+        )
     }
 
     public init(qualityProfile: StreamQualityProfile) {

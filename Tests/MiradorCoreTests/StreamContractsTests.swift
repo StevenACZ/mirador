@@ -17,8 +17,24 @@ struct StreamContractsTests {
         #expect(settings.targetBitrateKilobitsPerSecond == 8_000)
         #expect(settings.estimatedJPEGQuality > 0.18)
         #expect(settings.estimatedJPEGQuality < 0.90)
-        #expect(StreamVideoSettings(bitrateMegabitsPerSecond: 200).bitrateMegabitsPerSecond == 150)
+        #expect(
+            StreamVideoSettings(bitrateMegabitsPerSecond: 200).bitrateMegabitsPerSecond
+                == StreamVideoSettings.maximumBitrateMegabitsPerSecond
+        )
+        #expect(StreamVideoSettings.maximumJPEGPayloadBytes < LengthPrefixedMessageCodec.maximumPayloadLength)
         #expect(StreamQualityProfile.sharp.videoSettings.resolution == .p1440)
+    }
+
+    @Test("Decoded video settings are clamped")
+    func decodedVideoSettingsAreClamped() throws {
+        let data = Data(
+            #"{"resolution":"p2160","frameRate":60,"bitrateMegabitsPerSecond":999}"#.utf8
+        )
+        let settings = try JSONDecoder.mirador.decode(StreamVideoSettings.self, from: data)
+
+        #expect(settings.resolution == .p2160)
+        #expect(settings.frameRate == .fps60)
+        #expect(settings.bitrateMegabitsPerSecond == StreamVideoSettings.maximumBitrateMegabitsPerSecond)
     }
 
     @Test("Display selection preserves custom video settings")

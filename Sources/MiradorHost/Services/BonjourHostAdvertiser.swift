@@ -5,6 +5,7 @@ import MiradorCore
 final class BonjourHostAdvertiser: @unchecked Sendable {
     var onStateChange: ((String) -> Void)?
     var onAuthenticated: ((HostClientSession) -> Void)?
+    var onHostStatusRequested: ((HostClientSession) -> Void)?
     var onPreviewRequested: ((HostClientSession, DisplaySelection) -> Void)?
     var onPreviewStopped: ((HostClientSession) -> Void)?
     var onRemoteInput: ((HostClientSession, RemoteInputEvent) async -> Bool)?
@@ -62,6 +63,10 @@ final class BonjourHostAdvertiser: @unchecked Sendable {
 
         session.onAuthenticated = { [weak self] session in
             self?.onAuthenticated?(session)
+        }
+
+        session.onHostStatusRequested = { [weak self] session in
+            self?.onHostStatusRequested?(session)
         }
 
         session.onPreviewRequested = { [weak self] session, selection in

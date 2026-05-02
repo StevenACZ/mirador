@@ -15,6 +15,12 @@ extension HostController {
             }
         }
 
+        advertiser.onHostStatusRequested = { [weak self] session in
+            Task { @MainActor in
+                self?.sendHostStatus(to: session)
+            }
+        }
+
         advertiser.onPreviewRequested = { [weak self] session, selection in
             Task { @MainActor in
                 await self?.startPreview(for: session, selection: selection)

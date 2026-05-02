@@ -1,6 +1,5 @@
 import CoreGraphics
-import CoreImage
-import ImageIO
+import CoreVideo
 @preconcurrency import ScreenCaptureKit
 import MiradorCore
 
@@ -38,8 +37,7 @@ actor ScreenCaptureService {
     }
 
     private let frameBuffer = ScreenCaptureFrameBuffer()
-    private let imageContext = CIContext()
-    private let outputColorSpace = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
+    private let jpegEncoder = PreviewJPEGEncoder()
     private var shareableDisplays: [SCDisplay] = []
     private var activeStream: ActiveScreenStream?
     private var lastDeliveredFrameNumber: UInt64 = 0
@@ -82,7 +80,7 @@ actor ScreenCaptureService {
         let waitDuration = Date().timeIntervalSince(waitStartedAt) * 1_000
         lastDeliveredFrameNumber = sourceFrame.number
         let encodeStartedAt = Date()
-        let jpegData = try jpegData(from: sourceFrame.pixelBuffer, quality: videoSettings.estimatedJPEGQuality)
+        let jpegData = try jpegEncoder.jpegData(from: sourceFrame.pixelBuffer, settings: videoSettings)
         let encodeDuration = Date().timeIntervalSince(encodeStartedAt) * 1_000
         let droppedFrames = max(0, Int(sourceFrame.number - previousFrameNumber - 1))
         let width = CVPixelBufferGetWidth(sourceFrame.pixelBuffer)
@@ -245,20 +243,6 @@ actor ScreenCaptureService {
         )
     }
 
-    private func jpegData(from pixelBuffer: CVPixelBuffer, quality: Double) throws -> Data {
-        let image = CIImage(cvPixelBuffer: pixelBuffer)
-        let qualityKey = CIImageRepresentationOption(
-            rawValue: kCGImageDestinationLossyCompressionQuality as String
-        )
-        guard let data = imageContext.jpegRepresentation(
-            of: image,
-            colorSpace: outputColorSpace,
-            options: [qualityKey: quality]
-        ) else {
-            throw ScreenCaptureError.jpegEncodingFailed
-        }
-        return data
-    }
 }
 
 private extension PreviewViewport {
