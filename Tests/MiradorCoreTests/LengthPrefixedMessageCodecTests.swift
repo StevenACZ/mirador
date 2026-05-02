@@ -32,7 +32,24 @@ struct LengthPrefixedMessageCodecTests {
         let packet = try LengthPrefixedMessageCodec.encode(message)
         let payload = packet.dropFirst(LengthPrefixedMessageCodec.headerLength)
 
+        #expect(PreviewFrameBinaryPayloadCodec.isBinaryPayload(Data(payload)))
         let decoded = try LengthPrefixedMessageCodec.decode(SignalingMessage.self, from: Data(payload))
+        #expect(decoded == message)
+    }
+
+    @Test("Decodes legacy JSON preview frame payloads")
+    func legacyPreviewFrameRoundTrip() throws {
+        let frame = PreviewFrame(
+            sequence: 8,
+            capturedAt: Date(timeIntervalSince1970: 11),
+            width: 320,
+            height: 180,
+            jpegData: Data([0xFF, 0xD8, 0x00, 0xFF])
+        )
+        let message = SignalingMessage.previewFrame(frame)
+        let payload = try JSONEncoder.mirador.encode(message)
+
+        let decoded = try LengthPrefixedMessageCodec.decode(SignalingMessage.self, from: payload)
         #expect(decoded == message)
     }
 }

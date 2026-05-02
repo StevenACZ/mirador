@@ -10,31 +10,46 @@ public final class MiradorClientStore {
     public internal(set) var browserStatus = "Idle"
     public internal(set) var selectedHost: DiscoveredHost?
     public internal(set) var connectionStatus = "Not connected"
-    public internal(set) var authenticationStatus = "Enter the host PIN"
+    public internal(set) var authenticationStatus = "Connect to start local session"
+    public internal(set) var isAuthenticated = false
     public internal(set) var hostStatus: HostStatus?
+    public internal(set) var availableDisplays: [DisplayDescriptor] = []
     public internal(set) var latestFrame: PreviewFrame?
     public internal(set) var receivedFrames = 0
-    public var pinEntry = ""
+    public internal(set) var streamStats: StreamStats?
+    public internal(set) var lastFrameLatencyMilliseconds: Double?
+    public internal(set) var systemAudioStatus = SystemAudioStatus.unavailable
+    public internal(set) var isPreviewActive = false
+    public internal(set) var remoteControlStatus = "Control disabled"
+    public internal(set) var sentInputEvents = 0
+    public var selectedDisplayID: UInt32?
+    public var selectedVideoSettings = StreamVideoSettings()
+    public var zoomScale = 1.0
+    public var viewportCenterX = 0.5
+    public var viewportCenterY = 0.5
+    public var isControlModeEnabled = false
 
     @ObservationIgnored private var browser: NWBrowser?
     @ObservationIgnored var resultsByID: [String: NWBrowser.Result] = [:]
     @ObservationIgnored var connection: ClientConnection?
+    @ObservationIgnored var nextInputSequence: UInt64 = 0
+    @ObservationIgnored var sentInputEventTotal = 0
+    @ObservationIgnored var lastPointerInputUIUpdate = Date.distantPast
 
     public init() {}
 
     public func startBrowsing() {
         guard browser == nil else { return }
-
-        let parameters = NWParameters.tcp
-        parameters.includePeerToPeer = true
+        MiradorClientLog.browser.info("browser starting")
 
         let browser = NWBrowser(
             for: .bonjour(type: MiradorConstants.bonjourServiceType, domain: nil),
-            using: parameters
+            using: MiradorNetworkParameters.interactiveTCP()
         )
 
         browser.stateUpdateHandler = { [weak self] state in
             let status = Self.statusDescription(for: state)
+            MiradorClientLog.browser.info("browser state=\(status, privacy: .public)")
             Task { @MainActor in
                 self?.browserStatus = status
             }
@@ -50,6 +65,9 @@ public final class MiradorClientStore {
                 self?.resultsByID = Dictionary(
                     uniqueKeysWithValues: zip(mappedHosts.map(\.id), results)
                 )
+                MiradorClientLog.browser.info(
+                    "browser results count=\(mappedHosts.count, privacy: .public)"
+                )
             }
         }
 
@@ -59,6 +77,7 @@ public final class MiradorClientStore {
     }
 
     public func stopBrowsing() {
+        MiradorClientLog.browser.info("browser stopping")
         browser?.cancel()
         browser = nil
         hosts = []
@@ -68,9 +87,10 @@ public final class MiradorClientStore {
     }
 
     public func select(_ host: DiscoveredHost) {
+        MiradorClientLog.browser.info("host selected id=\(host.id, privacy: .public)")
         disconnect()
         selectedHost = host
-        authenticationStatus = "Enter the host PIN"
+        authenticationStatus = "Connect to start local session"
     }
 
     nonisolated private static func statusDescription(for state: NWBrowser.State) -> String {

@@ -9,50 +9,28 @@ public enum LengthPrefixedMessageCodec {
     public static let headerLength = 4
     public static let maximumPayloadLength = 4_194_304
 
-    public static func encode<Message: Encodable>(_ message: Message) throws -> Data {
-        let payload = try JSONEncoder.mirador.encode(message)
-        guard payload.count <= maximumPayloadLength else {
-            throw CodecError.payloadTooLarge
+    public static func encode(_ message: SignalingMessage) throws -> Data {
+        let payload: Data
+        switch message {
+        case let .previewFrame(frame):
+            payload = try PreviewFrameBinaryPayloadCodec.encode(frame)
+        default:
+            payload = try JSONEncoder.mirador.encode(message)
         }
-
-        var length = UInt32(payload.count).bigEndian
-        var packet = Data(bytes: &length, count: headerLength)
-        packet.append(payload)
-        return packet
+        return try packet(for: payload)
     }
 
-    public static func decodeLengthHeader(_ data: Data) throws -> Int {
-        guard data.count == headerLength else {
-            throw CodecError.invalidHeaderLength
-        }
-
-        let value = data.withUnsafeBytes { rawBuffer in
-            rawBuffer.load(as: UInt32.self).bigEndian
-        }
-
-        let length = Int(value)
-        guard length <= maximumPayloadLength else {
-            throw CodecError.payloadTooLarge
-        }
-
-        return length
+    public static func encode<Message: Encodable>(_ message: Message) throws -> Data {
+        let payload = try JSONEncoder.mirador.encode(message)
+        return try packet(for: payload)
     }
 
     public static func decode<Message: Decodable>(_ type: Message.Type, from payload: Data) throws -> Message {
-        try JSONDecoder.mirador.decode(type, from: payload)
-    }
-}
+        if type == SignalingMessage.self, PreviewFrameBinaryPayloadCodec.isBinaryPayload(payload) {
+            let frame = try PreviewFrameBinaryPayloadCodec.decode(payload)
+            return SignalingMessage.previewFrame(frame) as! Message
+        }
 
-public extension JSONEncoder {
-    static var mirador: JSONEncoder {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.sortedKeys]
-        return encoder
-    }
-}
-
-public extension JSONDecoder {
-    static var mirador: JSONDecoder {
-        JSONDecoder()
+        return try JSONDecoder.mirador.decode(type, from: payload)
     }
 }

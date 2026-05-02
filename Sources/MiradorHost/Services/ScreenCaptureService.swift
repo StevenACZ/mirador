@@ -1,21 +1,49 @@
 import CoreGraphics
-import Foundation
+import CoreImage
 import ImageIO
-import ScreenCaptureKit
-import UniformTypeIdentifiers
+@preconcurrency import ScreenCaptureKit
 import MiradorCore
 
-public struct CapturedDisplay: Identifiable, Equatable, Sendable {
-    public let id: UInt32
-    public let width: Int
-    public let height: Int
-
-    public var title: String {
-        "Display \(id)"
-    }
+struct CapturedPreviewFrame: Sendable {
+    let frame: PreviewFrame
+    let waitDurationMilliseconds: Double
+    let encodeDurationMilliseconds: Double
 }
 
 actor ScreenCaptureService {
+    private struct StreamKey: Equatable {
+        let displayID: UInt32
+        let resolution: StreamResolutionPreset
+        let frameRate: StreamFrameRatePreset
+        let viewport: PreviewViewport
+    }
+
+    private final class ActiveScreenStream {
+        let stream: SCStream
+        let output: ScreenCaptureStreamOutput
+        let sampleQueue: DispatchQueue
+        var key: StreamKey
+
+        init(
+            stream: SCStream,
+            output: ScreenCaptureStreamOutput,
+            sampleQueue: DispatchQueue,
+            key: StreamKey
+        ) {
+            self.stream = stream
+            self.output = output
+            self.sampleQueue = sampleQueue
+            self.key = key
+        }
+    }
+
+    private let frameBuffer = ScreenCaptureFrameBuffer()
+    private let imageContext = CIContext()
+    private let outputColorSpace = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
+    private var shareableDisplays: [SCDisplay] = []
+    private var activeStream: ActiveScreenStream?
+    private var lastDeliveredFrameNumber: UInt64 = 0
+
     nonisolated var permissionSummary: String {
         CGPreflightScreenCaptureAccess() ? "Granted" : "Not granted"
     }
@@ -25,12 +53,12 @@ actor ScreenCaptureService {
     }
 
     func loadDisplays() async throws -> [CapturedDisplay] {
-        let content = try await SCShareableContent.excludingDesktopWindows(
-            false,
-            onScreenWindowsOnly: true
+        let displays = try await refreshShareableDisplays()
+        MiradorHostLog.stream.info(
+            "loaded displays count=\(displays.count, privacy: .public) primary=\(CGMainDisplayID(), privacy: .public)"
         )
 
-        return content.displays.map { display in
+        return displays.map { display in
             CapturedDisplay(
                 id: display.displayID,
                 width: display.width,
@@ -39,75 +67,209 @@ actor ScreenCaptureService {
         }
     }
 
-    func capturePreviewFrame(sequence: UInt64) async throws -> PreviewFrame {
+    func capturePreviewFrame(
+        sequence: UInt64,
+        displayID: UInt32?,
+        videoSettings: StreamVideoSettings,
+        viewport: PreviewViewport
+    ) async throws -> CapturedPreviewFrame {
+        let display = try await shareableDisplay(displayID: displayID)
+        try await prepareStream(for: display, videoSettings: videoSettings, viewport: viewport)
+
+        let previousFrameNumber = lastDeliveredFrameNumber
+        let waitStartedAt = Date()
+        let sourceFrame = try await frameBuffer.nextFrame(after: previousFrameNumber)
+        let waitDuration = Date().timeIntervalSince(waitStartedAt) * 1_000
+        lastDeliveredFrameNumber = sourceFrame.number
+        let encodeStartedAt = Date()
+        let jpegData = try jpegData(from: sourceFrame.pixelBuffer, quality: videoSettings.estimatedJPEGQuality)
+        let encodeDuration = Date().timeIntervalSince(encodeStartedAt) * 1_000
+        let droppedFrames = max(0, Int(sourceFrame.number - previousFrameNumber - 1))
+        let width = CVPixelBufferGetWidth(sourceFrame.pixelBuffer)
+        let height = CVPixelBufferGetHeight(sourceFrame.pixelBuffer)
+
+        let frame = PreviewFrame(
+            sequence: sequence,
+            capturedAt: sourceFrame.capturedAt,
+            width: width,
+            height: height,
+            displayID: display.displayID,
+            qualityProfile: videoSettings.qualityProfile,
+            viewport: viewport,
+            sourceFrameNumber: sourceFrame.number,
+            sourceFramesDropped: droppedFrames,
+            jpegData: jpegData
+        )
+        return CapturedPreviewFrame(
+            frame: frame,
+            waitDurationMilliseconds: waitDuration,
+            encodeDurationMilliseconds: encodeDuration
+        )
+    }
+
+    func stopCapture() async {
+        await stopActiveStream(reason: "preview stopped")
+    }
+
+    private func prepareStream(
+        for display: SCDisplay,
+        videoSettings: StreamVideoSettings,
+        viewport: PreviewViewport
+    ) async throws {
+        let key = StreamKey(
+            displayID: display.displayID,
+            resolution: videoSettings.resolution,
+            frameRate: videoSettings.frameRate,
+            viewport: viewport
+        )
+        let configuration = previewConfiguration(
+            for: display,
+            videoSettings: videoSettings,
+            viewport: viewport
+        )
+
+        if let activeStream, activeStream.key.displayID == display.displayID {
+            guard activeStream.key != key else { return }
+            try await activeStream.stream.updateConfiguration(configuration)
+            activeStream.key = key
+            MiradorHostLog.stream.debug(
+                "screen stream updated display=\(display.displayID, privacy: .public) settings=\(videoSettings.summary, privacy: .public) viewport=\(viewport.captureLogSummary, privacy: .public)"
+            )
+            return
+        }
+
+        await stopActiveStream(reason: "display changed")
+        frameBuffer.reset()
+        lastDeliveredFrameNumber = 0
+
+        let filter = SCContentFilter(display: display, excludingWindows: [])
+        let output = ScreenCaptureStreamOutput(frameBuffer: frameBuffer)
+        let sampleQueue = DispatchQueue(
+            label: "com.stevenacz.mirador.host.screen-stream",
+            qos: .userInteractive
+        )
+        let stream = SCStream(filter: filter, configuration: configuration, delegate: nil)
+        try stream.addStreamOutput(output, type: .screen, sampleHandlerQueue: sampleQueue)
+        try await stream.startCapture()
+        activeStream = ActiveScreenStream(
+            stream: stream,
+            output: output,
+            sampleQueue: sampleQueue,
+            key: key
+        )
+        MiradorHostLog.stream.info(
+            "screen stream started display=\(display.displayID, privacy: .public) settings=\(videoSettings.summary, privacy: .public) size=\(configuration.width, privacy: .public)x\(configuration.height, privacy: .public) viewport=\(viewport.captureLogSummary, privacy: .public)"
+        )
+    }
+
+    private func stopActiveStream(reason: String) async {
+        guard let activeStream else { return }
+        self.activeStream = nil
+        frameBuffer.reset()
+        lastDeliveredFrameNumber = 0
+        do {
+            try await activeStream.stream.stopCapture()
+            MiradorHostLog.stream.info("screen stream stopped reason=\(reason, privacy: .public)")
+        } catch {
+            MiradorHostLog.stream.error(
+                "screen stream stop failed reason=\(reason, privacy: .public) error=\(error.localizedDescription, privacy: .public)"
+            )
+        }
+    }
+
+    private func shareableDisplay(displayID: UInt32?) async throws -> SCDisplay {
+        if let display = selectedDisplay(in: shareableDisplays, displayID: displayID) {
+            return display
+        }
+
+        let displays = try await refreshShareableDisplays()
+        if let display = selectedDisplay(in: displays, displayID: displayID) {
+            return display
+        }
+
+        MiradorHostLog.stream.error(
+            "requested display unavailable display=\(String(describing: displayID), privacy: .public) available=\(displays.map(\.displayID).description, privacy: .public)"
+        )
+        throw ScreenCaptureError.noDisplayAvailable
+    }
+
+    private func refreshShareableDisplays() async throws -> [SCDisplay] {
         let content = try await SCShareableContent.excludingDesktopWindows(
             false,
             onScreenWindowsOnly: true
         )
-        guard let display = content.displays.first else {
-            throw ScreenCaptureError.noDisplayAvailable
-        }
-
-        let configuration = previewConfiguration(for: display)
-        let filter = SCContentFilter(display: display, excludingWindows: [])
-        let image = try await SCScreenshotManager.captureImage(
-            contentFilter: filter,
-            configuration: configuration
-        )
-        let jpegData = try Self.jpegData(from: image, quality: MiradorConstants.previewJPEGQuality)
-
-        return PreviewFrame(
-            sequence: sequence,
-            capturedAt: Date(),
-            width: image.width,
-            height: image.height,
-            jpegData: jpegData
-        )
+        shareableDisplays = content.displays
+        return content.displays
     }
 
-    private func previewConfiguration(for display: SCDisplay) -> SCStreamConfiguration {
-        let scale = min(1, Double(MiradorConstants.previewMaxPixelWidth) / Double(display.width))
+    private func selectedDisplay(in displays: [SCDisplay], displayID: UInt32?) -> SCDisplay? {
+        if let displayID {
+            return displays.first { $0.displayID == displayID }
+        }
+
+        let primaryDisplayID = CGMainDisplayID()
+        return displays.first { $0.displayID == primaryDisplayID } ?? displays.first
+    }
+
+    private func previewConfiguration(
+        for display: SCDisplay,
+        videoSettings: StreamVideoSettings,
+        viewport: PreviewViewport
+    ) -> SCStreamConfiguration {
+        let cropWidth = max(1, Int(Double(display.width) * viewport.normalizedWidth))
+        let cropHeight = max(1, Int(Double(display.height) * viewport.normalizedHeight))
+        let scale = min(1, Double(videoSettings.resolution.maxPixelHeight) / Double(cropHeight))
         let configuration = SCStreamConfiguration()
-        configuration.width = max(1, Int(Double(display.width) * scale))
-        configuration.height = max(1, Int(Double(display.height) * scale))
-        configuration.minimumFrameInterval = CMTime(value: 1, timescale: CMTimeScale(MiradorConstants.mvpFrameRate))
+        configuration.width = max(1, Int(Double(cropWidth) * scale))
+        configuration.height = max(1, Int(Double(cropHeight) * scale))
+        configuration.minimumFrameInterval = CMTime(value: 1, timescale: CMTimeScale(videoSettings.targetFrameRate))
+        configuration.queueDepth = 3
         configuration.showsCursor = true
         configuration.scalesToFit = true
         configuration.capturesAudio = false
+        if !viewport.isFull {
+            configuration.sourceRect = sourceRect(for: display, viewport: viewport)
+        }
         return configuration
     }
 
-    private static func jpegData(from image: CGImage, quality: Double) throws -> Data {
-        let data = NSMutableData()
-        guard let destination = CGImageDestinationCreateWithData(
-            data,
-            UTType.jpeg.identifier as CFString,
-            1,
-            nil
+    private func sourceRect(for display: SCDisplay, viewport: PreviewViewport) -> CGRect {
+        let bounds = CGDisplayBounds(display.displayID)
+        let width = bounds.isEmpty ? CGFloat(display.width) : bounds.width
+        let height = bounds.isEmpty ? CGFloat(display.height) : bounds.height
+        return CGRect(
+            x: width * viewport.normalizedX,
+            y: height * viewport.normalizedY,
+            width: width * viewport.normalizedWidth,
+            height: height * viewport.normalizedHeight
+        )
+    }
+
+    private func jpegData(from pixelBuffer: CVPixelBuffer, quality: Double) throws -> Data {
+        let image = CIImage(cvPixelBuffer: pixelBuffer)
+        let qualityKey = CIImageRepresentationOption(
+            rawValue: kCGImageDestinationLossyCompressionQuality as String
+        )
+        guard let data = imageContext.jpegRepresentation(
+            of: image,
+            colorSpace: outputColorSpace,
+            options: [qualityKey: quality]
         ) else {
             throw ScreenCaptureError.jpegEncodingFailed
         }
-
-        let options = [kCGImageDestinationLossyCompressionQuality: quality] as CFDictionary
-        CGImageDestinationAddImage(destination, image, options)
-        guard CGImageDestinationFinalize(destination) else {
-            throw ScreenCaptureError.jpegEncodingFailed
-        }
-
-        return data as Data
+        return data
     }
 }
 
-private enum ScreenCaptureError: LocalizedError {
-    case noDisplayAvailable
-    case jpegEncodingFailed
-
-    var errorDescription: String? {
-        switch self {
-        case .noDisplayAvailable:
-            "No display is available for capture."
-        case .jpegEncodingFailed:
-            "The captured frame could not be encoded as JPEG."
-        }
+private extension PreviewViewport {
+    var captureLogSummary: String {
+        String(
+            format: "x=%.3f y=%.3f w=%.3f h=%.3f z=%.2f",
+            normalizedX,
+            normalizedY,
+            normalizedWidth,
+            normalizedHeight,
+            zoomScale
+        )
     }
 }

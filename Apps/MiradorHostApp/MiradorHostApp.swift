@@ -17,12 +17,6 @@ struct MiradorHostInstallableApp: App {
                 controller.toggleAdvertising()
             }
 
-            Button("Rotate PIN") {
-                controller.rotatePIN()
-            }
-
-            Divider()
-
             Button("Quit Mirador") {
                 NSApplication.shared.terminate(nil)
             }

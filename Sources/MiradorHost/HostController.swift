@@ -9,43 +9,42 @@ public final class HostController {
     public var networkStatus = "Idle"
     public var captureStatus = "Idle"
     public var permissionStatus = "Unknown"
-    public var sessionPIN = SessionPIN.generate()
     public var authenticatedSessions = 0
+    public var activeAuthenticatedSessions = 0
     public var streamedFrames = 0
+    public var isRemoteControlEnabled = false
+    public var remoteControlStatus = "Control disabled"
+    public var receivedInputEvents = 0
+    public var appliedInputEvents = 0
     public var displays: [CapturedDisplay] = []
+    public var selectedDisplayID: UInt32?
+    public var videoSettings = StreamVideoSettings()
+    public var qualityProfile: StreamQualityProfile = StreamVideoSettings().qualityProfile
+    public var previewViewport: PreviewViewport = .full
+    public var streamStats: StreamStats?
+    public var trustedClients: [TrustedClient] = []
+    public var isSystemAudioAllowed = false
+    public var systemAudioStatus = SystemAudioStatus.disabled()
 
-    @ObservationIgnored private let advertiser = BonjourHostAdvertiser()
-    @ObservationIgnored private let captureService = ScreenCaptureService()
-    @ObservationIgnored private var previewTask: Task<Void, Never>?
-    @ObservationIgnored private var nextFrameSequence: UInt64 = 0
+    @ObservationIgnored let advertiser = BonjourHostAdvertiser()
+    @ObservationIgnored let captureService = ScreenCaptureService()
+    @ObservationIgnored let systemAudioCaptureService = SystemAudioCaptureService()
+    @ObservationIgnored let inputControlService = InputControlService()
+    @ObservationIgnored var previewTask: Task<Void, Never>?
+    @ObservationIgnored var nextFrameSequence: UInt64 = 0
+    @ObservationIgnored var activePreviewSessionID: UUID?
+    @ObservationIgnored var metricsTracker = StreamMetricsTracker()
+    @ObservationIgnored var skippedPreviewFrames = 0
+    @ObservationIgnored var streamedFrameTotal = 0
+    @ObservationIgnored var lastStreamUIUpdate = Date.distantPast
+    @ObservationIgnored var receivedInputEventTotal = 0
+    @ObservationIgnored var appliedInputEventTotal = 0
+    @ObservationIgnored var lastInputUIUpdate = Date.distantPast
 
     public init() {
         permissionStatus = captureService.permissionSummary
-
-        advertiser.onStateChange = { [weak self] status in
-            Task { @MainActor in
-                self?.networkStatus = status
-                self?.isAdvertising = status == "Listening"
-            }
-        }
-
-        advertiser.onAuthenticated = { [weak self] session in
-            Task { @MainActor in
-                await self?.startPreviewAfterAuthentication(for: session)
-            }
-        }
-
-        advertiser.onPreviewStopped = { [weak self] in
-            Task { @MainActor in
-                self?.stopPreview()
-            }
-        }
-
-        advertiser.onConnectionClosed = { [weak self] _ in
-            Task { @MainActor in
-                self?.stopPreview()
-            }
-        }
+        systemAudioStatus = SystemAudioStatus.disabled(isAvailable: systemAudioCaptureService.isAvailable)
+        configureAdvertiserCallbacks()
     }
 
     public func toggleAdvertising() {
@@ -54,7 +53,7 @@ public final class HostController {
 
     public func startAdvertising() {
         do {
-            try advertiser.start(pin: sessionPIN)
+            try advertiser.start()
             isAdvertising = true
             networkStatus = "Listening"
         } catch {
@@ -70,14 +69,6 @@ public final class HostController {
         networkStatus = "Idle"
     }
 
-    public func rotatePIN() {
-        sessionPIN = SessionPIN.generate()
-        if isAdvertising {
-            stopAdvertising()
-            startAdvertising()
-        }
-    }
-
     public func refreshPermissionStatus() {
         permissionStatus = captureService.permissionSummary
     }
@@ -87,50 +78,15 @@ public final class HostController {
         refreshPermissionStatus()
     }
 
-    private func startPreviewAfterAuthentication(for session: HostClientSession) async {
-        authenticatedSessions += 1
-        captureStatus = "Preparing capture"
-
-        do {
-            displays = try await captureService.loadDisplays()
-            captureStatus = displays.isEmpty
-                ? "No displays available"
-                : "Ready for MVP1 stream at \(MiradorConstants.mvpFrameRate) FPS"
-        } catch {
-            captureStatus = "Capture failed: \(error.localizedDescription)"
-        }
-
-        previewTask?.cancel()
-        previewTask = Task { [weak self, weak session] in
-            guard let self, let session else { return }
-            await self.streamPreviewFrames(to: session)
+    public func revokeClient(id: UUID) {
+        advertiser.cancelSession(id: id)
+        markTrustedClient(id: id, isActive: false)
+        if activePreviewSessionID == id {
+            stopPreview()
         }
     }
 
-    private func streamPreviewFrames(to session: HostClientSession) async {
-        while !Task.isCancelled {
-            do {
-                let sequence = nextFrameSequence
-                nextFrameSequence += 1
-                let frame = try await captureService.capturePreviewFrame(sequence: sequence)
-                session.sendPreviewFrame(frame)
-                streamedFrames += 1
-                captureStatus = "Streaming frame \(streamedFrames) at \(MiradorConstants.mvpFrameRate) FPS target"
-                try await Task.sleep(nanoseconds: 1_000_000_000 / UInt64(MiradorConstants.mvpFrameRate))
-            } catch is CancellationError {
-                break
-            } catch {
-                captureStatus = "Preview failed: \(error.localizedDescription)"
-                break
-            }
-        }
-    }
-
-    private func stopPreview() {
-        previewTask?.cancel()
-        previewTask = nil
-        if streamedFrames > 0 {
-            captureStatus = "Preview stopped after \(streamedFrames) frames"
-        }
+    public func forgetInactiveTrustedClients() {
+        trustedClients.removeAll { !$0.isActive }
     }
 }

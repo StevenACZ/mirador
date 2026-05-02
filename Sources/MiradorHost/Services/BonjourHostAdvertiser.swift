@@ -5,24 +5,20 @@ import MiradorCore
 final class BonjourHostAdvertiser: @unchecked Sendable {
     var onStateChange: ((String) -> Void)?
     var onAuthenticated: ((HostClientSession) -> Void)?
-    var onPreviewStopped: (() -> Void)?
+    var onPreviewRequested: ((HostClientSession, DisplaySelection) -> Void)?
+    var onPreviewStopped: ((HostClientSession) -> Void)?
+    var onRemoteInput: ((HostClientSession, RemoteInputEvent) async -> Bool)?
     var onConnectionClosed: ((HostClientSession) -> Void)?
 
     private var listener: NWListener?
-    private var sessionPIN: SessionPIN?
     private var sessions: [UUID: HostClientSession] = [:]
 
-    func start(pin: SessionPIN) throws {
+    func start() throws {
         stop()
 
-        sessionPIN = pin
-
-        let parameters = NWParameters.tcp
-        parameters.includePeerToPeer = true
-
-        let listener = try NWListener(using: parameters)
+        let listener = try NWListener(using: MiradorNetworkParameters.interactiveTCP())
         listener.service = NWListener.Service(
-            name: Host.current().localizedName ?? MiradorConstants.appName,
+            name: MiradorConstants.hostServiceName,
             type: MiradorConstants.bonjourServiceType
         )
 
@@ -45,28 +41,43 @@ final class BonjourHostAdvertiser: @unchecked Sendable {
         listener = nil
     }
 
+    func cancelSession(id: UUID) {
+        sessions[id]?.cancel()
+        sessions[id] = nil
+    }
+
+    func session(id: UUID) -> HostClientSession? {
+        sessions[id]
+    }
+
     private func handle(_ connection: NWConnection) {
         let session = HostClientSession(
             connection: connection,
-            hostName: Host.current().localizedName ?? MiradorConstants.appName,
-            pinProvider: { [weak self] in self?.sessionPIN }
+            hostName: MiradorConstants.hostServiceName
         )
 
         session.onStateChange = { [weak self] status in
             self?.onStateChange?(status)
         }
 
-        session.onAuthenticated = { [weak self, weak session] in
-            guard let session else { return }
+        session.onAuthenticated = { [weak self] session in
             self?.onAuthenticated?(session)
         }
 
-        session.onPreviewStopped = { [weak self] in
-            self?.onPreviewStopped?()
+        session.onPreviewRequested = { [weak self] session, selection in
+            self?.onPreviewRequested?(session, selection)
         }
 
-        session.onClosed = { [weak self, weak session] in
-            guard let self, let session else { return }
+        session.onPreviewStopped = { [weak self] session in
+            self?.onPreviewStopped?(session)
+        }
+
+        session.onRemoteInput = { [weak self] session, event in
+            await self?.onRemoteInput?(session, event) ?? false
+        }
+
+        session.onClosed = { [weak self] session in
+            guard let self else { return }
             self.sessions[session.id] = nil
             self.onConnectionClosed?(session)
         }

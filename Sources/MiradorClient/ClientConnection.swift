@@ -10,128 +10,107 @@ final class ClientConnection: @unchecked Sendable {
     var onAuthenticationResult: ((AuthenticationResult) -> Void)?
     var onHostStatus: ((HostStatus) -> Void)?
     var onPreviewFrame: ((PreviewFrame) -> Void)?
+    var onStreamStats: ((StreamStats) -> Void)?
     var onClosed: (() -> Void)?
 
-    private let connection: NWConnection
+    let connection: NWConnection
+    private let connectionQueue = DispatchQueue(
+        label: "com.stevenacz.mirador.client.connection",
+        qos: .userInteractive
+    )
     private var isClosed = false
+    private var remoteInputLogCounter = 0
 
     init(endpoint: NWEndpoint) {
-        let parameters = NWParameters.tcp
-        parameters.includePeerToPeer = true
-        connection = NWConnection(to: endpoint, using: parameters)
+        connection = NWConnection(to: endpoint, using: MiradorNetworkParameters.interactiveTCP())
     }
 
     func start() {
+        MiradorClientLog.connection.info("nw connection starting")
         connection.stateUpdateHandler = { [weak self] state in
             self?.handle(state)
         }
-        connection.start(queue: .main)
+        connection.start(queue: connectionQueue)
         receiveHeader()
     }
 
-    func authenticate(pin: String) {
+    func startLocalSession() {
+        MiradorClientLog.connection.info("auth sending local hello")
         send(.hello(ClientHello(deviceName: Self.deviceName)))
-        send(.authenticate(PINAuthentication(pin: pin)))
     }
 
     func stop() {
+        MiradorClientLog.connection.info("nw connection stop requested")
         isClosed = true
         send(.stopPreview)
         connection.cancel()
     }
 
+    func sendRemoteInput(_ event: RemoteInputEvent) {
+        logRemoteInputIfNeeded(event)
+        send(.remoteInput(event))
+    }
+
+    func requestPreview(_ selection: DisplaySelection) {
+        MiradorClientLog.stream.debug(
+            "send preview request display=\(String(describing: selection.displayID), privacy: .public) settings=\(selection.videoSettings.summary, privacy: .public)"
+        )
+        send(.startPreview(selection))
+    }
+
     private func handle(_ state: NWConnection.State) {
         switch state {
         case .ready:
+            MiradorClientLog.connection.info("nw connection ready")
             onStatusChange?("Connected")
         case let .waiting(error):
+            MiradorClientLog.connection.info(
+                "nw connection waiting error=\(error.localizedDescription, privacy: .public)"
+            )
             onStatusChange?("Waiting: \(error.localizedDescription)")
         case let .failed(error):
+            MiradorClientLog.connection.error(
+                "nw connection failed error=\(error.localizedDescription, privacy: .public)"
+            )
             onStatusChange?("Failed: \(error.localizedDescription)")
             close()
         case .cancelled:
+            MiradorClientLog.connection.info("nw connection cancelled")
             close()
         default:
             break
         }
     }
 
-    private func receiveHeader() {
-        connection.receive(
-            minimumIncompleteLength: LengthPrefixedMessageCodec.headerLength,
-            maximumLength: LengthPrefixedMessageCodec.headerLength
-        ) { [weak self] data, _, isComplete, error in
-            guard error == nil, !isComplete, let data else {
-                self?.close()
-                return
-            }
-
-            do {
-                let payloadLength = try LengthPrefixedMessageCodec.decodeLengthHeader(data)
-                self?.receivePayload(length: payloadLength)
-            } catch {
-                self?.onStatusChange?("Invalid frame header: \(error.localizedDescription)")
-                self?.receiveHeader()
-            }
-        }
-    }
-
-    private func receivePayload(length: Int) {
-        connection.receive(minimumIncompleteLength: length, maximumLength: length) { [weak self] data, _, _, error in
-            guard error == nil, let data else {
-                self?.close()
-                return
-            }
-
-            do {
-                let message = try LengthPrefixedMessageCodec.decode(SignalingMessage.self, from: data)
-                self?.handle(message)
-                self?.receiveHeader()
-            } catch {
-                self?.onStatusChange?("Invalid payload: \(error.localizedDescription)")
-                self?.receiveHeader()
-            }
-        }
-    }
-
-    private func handle(_ message: SignalingMessage) {
-        switch message {
-        case let .authenticationResult(result):
-            onAuthenticationResult?(result)
-            if result.accepted {
-                send(.startPreview(DisplaySelection()))
-            }
-        case let .hostStatus(status):
-            onHostStatus?(status)
-        case let .previewFrame(frame):
-            onPreviewFrame?(frame)
-        case let .error(error):
-            onStatusChange?("\(error.code): \(error.message)")
-        case .hello, .authenticate, .startPreview, .stopPreview:
-            break
-        }
-    }
-
-    private func send(_ message: SignalingMessage) {
-        do {
-            let packet = try LengthPrefixedMessageCodec.encode(message)
-            connection.send(content: packet, completion: .contentProcessed { _ in })
-        } catch {
-            onStatusChange?("Encoding failed: \(error.localizedDescription)")
-        }
-    }
-
-    private func close() {
+    func close() {
         guard !isClosed else { return }
         isClosed = true
+        MiradorClientLog.connection.info("nw connection closed")
         onClosed?()
+    }
+
+    private func logRemoteInputIfNeeded(_ event: RemoteInputEvent) {
+        remoteInputLogCounter += 1
+        guard event.kind != .pointerMove || remoteInputLogCounter.isMultiple(of: 60) else {
+            return
+        }
+        MiradorClientLog.input.debug(
+            "send remote input kind=\(event.kind.rawValue, privacy: .public) seq=\(event.sequence, privacy: .public)"
+        )
     }
 
     private static var deviceName: String {
         #if canImport(UIKit)
-        UIDevice.current.name
+        switch UIDevice.current.userInterfaceIdiom {
+        case .pad:
+            "iPad"
+        case .phone:
+            "iPhone"
+        default:
+            "Mirador Client"
+        }
         #else
-        Host.current().localizedName ?? "Mirador Client"
+        "Mirador Client"
         #endif
     }
 }
