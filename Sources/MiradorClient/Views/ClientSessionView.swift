@@ -73,7 +73,7 @@ struct ClientSessionView: View {
             } else {
                 ContentUnavailableView(
                     "Select a Mac",
-                    systemImage: "display.and.iphone",
+                    systemImage: "display",
                     description: Text("Choose a Mirador host from the browser.")
                 )
             }

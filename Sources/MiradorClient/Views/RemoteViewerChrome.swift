@@ -30,7 +30,8 @@ struct RemoteViewerChrome: View {
                 Spacer()
 
                 if let stats = store.streamStats {
-                    Text("\(stats.effectiveFramesPerSecond, specifier: "%.0f")/\(stats.targetFrameRate) FPS")
+                    Text("\(stats.sentFramesPerSecond, specifier: "%.0f")/\(stats.targetFrameRate) sent")
+                    Text("\(stats.sourceFramesPerSecond, specifier: "%.0f") src")
                     Text("\(stats.bitrateKilobitsPerSecond / 1_000, specifier: "%.1f") Mbps")
                     Text("\(stats.sourceDropRate * 100, specifier: "%.1f")% drop")
                 }

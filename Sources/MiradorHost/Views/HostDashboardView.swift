@@ -111,10 +111,12 @@ public struct HostDashboardView: View {
             Grid(alignment: .leading, horizontalSpacing: 18, verticalSpacing: 8) {
                 statRow("Settings", controller.videoSettings.summary)
                 statRow("Zoom", zoomSummary)
-                statRow("FPS", controller.streamStats.map { String(format: "%.1f / %d", $0.effectiveFramesPerSecond, $0.targetFrameRate) } ?? "Waiting")
+                statRow("Sent FPS", controller.streamStats.map { String(format: "%.1f / %d", $0.sentFramesPerSecond, $0.targetFrameRate) } ?? "Waiting")
+                statRow("Source FPS", controller.streamStats.map { String(format: "%.1f", $0.sourceFramesPerSecond) } ?? "Waiting")
                 statRow("Bitrate", controller.streamStats.map { String(format: "%.0f kbps", $0.bitrateKilobitsPerSecond) } ?? "Waiting")
                 statRow("Frame Cost", controller.streamStats.map { String(format: "%.0f ms encode / %.0f ms send", $0.captureDurationMilliseconds, $0.sendDurationMilliseconds) } ?? "Waiting")
                 statRow("Frame Wait", controller.streamStats.map { String(format: "%.0f ms", $0.captureWaitDurationMilliseconds) } ?? "Waiting")
+                statRow("Repeated", controller.streamStats.map { String(format: "%.1f%%", $0.repeatedFrameRate * 100) } ?? "Waiting")
                 statRow("Source Drop", controller.streamStats.map { String(format: "%.1f%%", $0.sourceDropRate * 100) } ?? "Waiting")
             }
         }

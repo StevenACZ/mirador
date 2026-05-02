@@ -18,7 +18,7 @@ extension MiradorClientStore {
             return
         }
 
-        let viewport = latestFrame?.viewport ?? .full
+        let viewport = latestStreamFrameInfo?.viewport ?? .full
         let location = RemotePointerLocation(
             normalizedX: viewport.normalizedX + normalizedX * viewport.normalizedWidth,
             normalizedY: viewport.normalizedY + normalizedY * viewport.normalizedHeight
@@ -119,6 +119,6 @@ extension MiradorClientStore {
     }
 
     var remoteInputDisplayID: UInt32? {
-        selectedDisplayID ?? latestFrame?.displayID
+        selectedDisplayID ?? latestStreamFrameInfo?.displayID
     }
 }

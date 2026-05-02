@@ -62,6 +62,13 @@ final class ScreenCaptureFrameBuffer: @unchecked Sendable {
         }
     }
 
+    func latestPublishedFrame() -> ScreenCaptureSourceFrame? {
+        lock.lock()
+        let frame = latestFrame
+        lock.unlock()
+        return frame
+    }
+
     func reset() {
         lock.lock()
         latestFrame = nil

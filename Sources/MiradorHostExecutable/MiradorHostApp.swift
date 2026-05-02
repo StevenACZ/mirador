@@ -12,7 +12,7 @@ struct MiradorHostApp: App {
                 .frame(minWidth: 540, minHeight: 420)
         }
 
-        MenuBarExtra("Mirador", systemImage: "display.and.iphone") {
+        MenuBarExtra("Mirador", systemImage: "display") {
             Button(controller.isAdvertising ? "Stop Listener" : "Start Listener") {
                 controller.toggleAdvertising()
             }

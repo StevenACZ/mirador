@@ -10,9 +10,11 @@ extension MiradorClientStore {
         isAuthenticated = false
         availableDisplays = []
         latestFrame = nil
+        latestVideoFrameInfo = nil
         receivedFrames = 0
         streamStats = nil
         lastFrameLatencyMilliseconds = nil
+        flushVideoRenderers()
         systemAudioStatus = .unavailable
         isPreviewActive = false
         remoteControlStatus = "Control disabled"

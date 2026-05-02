@@ -10,6 +10,7 @@ final class ClientConnection: @unchecked Sendable {
     var onAuthenticationResult: ((AuthenticationResult) -> Void)?
     var onHostStatus: ((HostStatus) -> Void)?
     var onPreviewFrame: ((PreviewFrame) -> Void)?
+    var onVideoFrame: ((EncodedVideoFrame) -> Void)?
     var onStreamStats: ((StreamStats) -> Void)?
     var onClosed: (() -> Void)?
 

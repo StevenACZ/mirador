@@ -9,10 +9,12 @@ struct StreamContractsTests {
         let settings = StreamVideoSettings(
             resolution: .p720,
             frameRate: .fps60,
-            bitrateMegabitsPerSecond: 8
+            bitrateMegabitsPerSecond: 8,
+            codec: .hevc
         )
 
         #expect(settings.targetFrameRate == 60)
+        #expect(settings.codec == .hevc)
         #expect(settings.resolution.maxPixelHeight == 720)
         #expect(settings.targetBitrateKilobitsPerSecond == 8_000)
         #expect(settings.estimatedJPEGQuality > 0.18)
@@ -21,6 +23,9 @@ struct StreamContractsTests {
             StreamVideoSettings(bitrateMegabitsPerSecond: 200).bitrateMegabitsPerSecond
                 == StreamVideoSettings.maximumBitrateMegabitsPerSecond
         )
+        #expect(StreamVideoSettings().codec == .h264)
+        #expect(StreamVideoSettings().resolution == .p1080)
+        #expect(StreamVideoSettings().frameRate == .fps60)
         #expect(StreamVideoSettings.maximumJPEGPayloadBytes < LengthPrefixedMessageCodec.maximumPayloadLength)
         #expect(StreamQualityProfile.sharp.videoSettings.resolution == .p1440)
     }
@@ -34,7 +39,17 @@ struct StreamContractsTests {
 
         #expect(settings.resolution == .p2160)
         #expect(settings.frameRate == .fps60)
+        #expect(settings.codec == .h264)
         #expect(settings.bitrateMegabitsPerSecond == StreamVideoSettings.maximumBitrateMegabitsPerSecond)
+    }
+
+    @Test("Round-trips stream codec values")
+    func streamCodecRoundTrip() throws {
+        for codec in StreamCodec.allCases {
+            let data = try JSONEncoder.mirador.encode(codec)
+            let decoded = try JSONDecoder.mirador.decode(StreamCodec.self, from: data)
+            #expect(decoded == codec)
+        }
     }
 
     @Test("Display selection preserves custom video settings")
@@ -42,7 +57,8 @@ struct StreamContractsTests {
         let settings = StreamVideoSettings(
             resolution: .p1440,
             frameRate: .fps60,
-            bitrateMegabitsPerSecond: 35
+            bitrateMegabitsPerSecond: 35,
+            codec: .jpeg
         )
         let selection = DisplaySelection(displayID: 3, videoSettings: settings, viewport: .full)
 
@@ -81,12 +97,18 @@ struct StreamContractsTests {
             framesSent: 30,
             bytesSent: 900_000,
             effectiveFramesPerSecond: 29.8,
+            sourceFramesPerSecond: 24.1,
+            encodedFramesPerSecond: 29.8,
+            sentFramesPerSecond: 29.8,
             bitrateKilobitsPerSecond: 720,
             lastFrameBytes: 30_000,
             captureDurationMilliseconds: 12,
             targetFrameRate: 30,
+            codec: .h264,
             qualityProfile: .balanced,
-            displayID: 7
+            displayID: 7,
+            repeatedFrames: 4,
+            repeatedFrameRate: 0.13
         )
 
         let message = SignalingMessage.streamStats(stats)
@@ -94,6 +116,33 @@ struct StreamContractsTests {
         let payload = packet.dropFirst(LengthPrefixedMessageCodec.headerLength)
         let decoded = try LengthPrefixedMessageCodec.decode(SignalingMessage.self, from: Data(payload))
         #expect(decoded == message)
+    }
+
+    @Test("Decoded legacy stream stats default new cadence fields")
+    func legacyStatsDefaultCadenceFields() throws {
+        let data = Data(
+            """
+            {
+              "capturedAt":20,
+              "framesSent":30,
+              "bytesSent":900000,
+              "effectiveFramesPerSecond":29.8,
+              "bitrateKilobitsPerSecond":720,
+              "lastFrameBytes":30000,
+              "captureDurationMilliseconds":12,
+              "targetFrameRate":30,
+              "qualityProfile":"balanced",
+              "displayID":7
+            }
+            """.utf8
+        )
+        let stats = try JSONDecoder.mirador.decode(StreamStats.self, from: data)
+
+        #expect(stats.sourceFramesPerSecond == 29.8)
+        #expect(stats.encodedFramesPerSecond == 29.8)
+        #expect(stats.sentFramesPerSecond == 29.8)
+        #expect(stats.repeatedFrames == 0)
+        #expect(stats.repeatedFrameRate == 0)
     }
 
     @Test("Round-trips host system audio status")

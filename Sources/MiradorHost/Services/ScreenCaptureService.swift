@@ -3,12 +3,6 @@ import CoreVideo
 @preconcurrency import ScreenCaptureKit
 import MiradorCore
 
-struct CapturedPreviewFrame: Sendable {
-    let frame: PreviewFrame
-    let waitDurationMilliseconds: Double
-    let encodeDurationMilliseconds: Double
-}
-
 actor ScreenCaptureService {
     private struct StreamKey: Equatable {
         let displayID: UInt32
@@ -71,37 +65,89 @@ actor ScreenCaptureService {
         videoSettings: StreamVideoSettings,
         viewport: PreviewViewport
     ) async throws -> CapturedPreviewFrame {
+        let sourceFrame = try await captureSourceFrame(
+            displayID: displayID,
+            videoSettings: videoSettings,
+            viewport: viewport
+        )
+        let encodeStartedAt = Date()
+        let jpegData = try jpegEncoder.jpegData(from: sourceFrame.pixelBuffer, settings: videoSettings)
+        let encodeDuration = Date().timeIntervalSince(encodeStartedAt) * 1_000
+
+        let frame = PreviewFrame(
+            sequence: sequence,
+            capturedAt: sourceFrame.capturedAt,
+            width: sourceFrame.width,
+            height: sourceFrame.height,
+            displayID: sourceFrame.displayID,
+            qualityProfile: videoSettings.qualityProfile,
+            viewport: viewport,
+            sourceFrameNumber: sourceFrame.sourceFrameNumber,
+            sourceFramesDropped: sourceFrame.sourceFramesDropped,
+            jpegData: jpegData
+        )
+        return CapturedPreviewFrame(
+            frame: frame,
+            waitDurationMilliseconds: sourceFrame.waitDurationMilliseconds,
+            encodeDurationMilliseconds: encodeDuration
+        )
+    }
+
+    func captureSourceFrame(
+        displayID: UInt32?,
+        videoSettings: StreamVideoSettings,
+        viewport: PreviewViewport,
+        repeatsLatestFrame: Bool = false
+    ) async throws -> CapturedSourceFrame {
         let display = try await shareableDisplay(displayID: displayID)
         try await prepareStream(for: display, videoSettings: videoSettings, viewport: viewport)
 
         let previousFrameNumber = lastDeliveredFrameNumber
         let waitStartedAt = Date()
-        let sourceFrame = try await frameBuffer.nextFrame(after: previousFrameNumber)
+        let sourceFrame = try await nextSourceFrame(
+            after: previousFrameNumber,
+            repeatsLatestFrame: repeatsLatestFrame
+        )
         let waitDuration = Date().timeIntervalSince(waitStartedAt) * 1_000
-        lastDeliveredFrameNumber = sourceFrame.number
-        let encodeStartedAt = Date()
-        let jpegData = try jpegEncoder.jpegData(from: sourceFrame.pixelBuffer, settings: videoSettings)
-        let encodeDuration = Date().timeIntervalSince(encodeStartedAt) * 1_000
-        let droppedFrames = max(0, Int(sourceFrame.number - previousFrameNumber - 1))
-        let width = CVPixelBufferGetWidth(sourceFrame.pixelBuffer)
-        let height = CVPixelBufferGetHeight(sourceFrame.pixelBuffer)
+        if !sourceFrame.isRepeated {
+            lastDeliveredFrameNumber = sourceFrame.frame.number
+        }
 
-        let frame = PreviewFrame(
-            sequence: sequence,
+        return CapturedSourceFrame(
+            pixelBuffer: sourceFrame.frame.pixelBuffer,
             capturedAt: sourceFrame.capturedAt,
-            width: width,
-            height: height,
+            width: CVPixelBufferGetWidth(sourceFrame.frame.pixelBuffer),
+            height: CVPixelBufferGetHeight(sourceFrame.frame.pixelBuffer),
             displayID: display.displayID,
             qualityProfile: videoSettings.qualityProfile,
             viewport: viewport,
-            sourceFrameNumber: sourceFrame.number,
-            sourceFramesDropped: droppedFrames,
-            jpegData: jpegData
+            sourceFrameNumber: sourceFrame.frame.number,
+            sourceFramesDropped: sourceFrame.isRepeated
+                ? 0
+                : max(0, Int(sourceFrame.frame.number - previousFrameNumber - 1)),
+            isRepeatedSourceFrame: sourceFrame.isRepeated,
+            waitDurationMilliseconds: waitDuration
         )
-        return CapturedPreviewFrame(
+    }
+
+    private func nextSourceFrame(
+        after previousFrameNumber: UInt64,
+        repeatsLatestFrame: Bool
+    ) async throws -> DeliveredSourceFrame {
+        if repeatsLatestFrame, let latestFrame = frameBuffer.latestPublishedFrame() {
+            let isRepeated = latestFrame.number <= previousFrameNumber
+            return DeliveredSourceFrame(
+                frame: latestFrame,
+                capturedAt: Date(),
+                isRepeated: isRepeated
+            )
+        }
+
+        let frame = try await frameBuffer.nextFrame(after: previousFrameNumber)
+        return DeliveredSourceFrame(
             frame: frame,
-            waitDurationMilliseconds: waitDuration,
-            encodeDurationMilliseconds: encodeDuration
+            capturedAt: repeatsLatestFrame ? Date() : frame.capturedAt,
+            isRepeated: false
         )
     }
 
@@ -131,7 +177,7 @@ actor ScreenCaptureService {
             try await activeStream.stream.updateConfiguration(configuration)
             activeStream.key = key
             MiradorHostLog.stream.debug(
-                "screen stream updated display=\(display.displayID, privacy: .public) settings=\(videoSettings.summary, privacy: .public) viewport=\(viewport.captureLogSummary, privacy: .public)"
+                "screen stream updated display=\(display.displayID, privacy: .public) settings=\(videoSettings.summary, privacy: .public) viewport=\(viewport.logSummary, privacy: .public)"
             )
             return
         }
@@ -156,7 +202,7 @@ actor ScreenCaptureService {
             key: key
         )
         MiradorHostLog.stream.info(
-            "screen stream started display=\(display.displayID, privacy: .public) settings=\(videoSettings.summary, privacy: .public) size=\(configuration.width, privacy: .public)x\(configuration.height, privacy: .public) viewport=\(viewport.captureLogSummary, privacy: .public)"
+            "screen stream started display=\(display.displayID, privacy: .public) settings=\(videoSettings.summary, privacy: .public) size=\(configuration.width, privacy: .public)x\(configuration.height, privacy: .public) viewport=\(viewport.logSummary, privacy: .public)"
         )
     }
 
@@ -245,15 +291,8 @@ actor ScreenCaptureService {
 
 }
 
-private extension PreviewViewport {
-    var captureLogSummary: String {
-        String(
-            format: "x=%.3f y=%.3f w=%.3f h=%.3f z=%.2f",
-            normalizedX,
-            normalizedY,
-            normalizedWidth,
-            normalizedHeight,
-            zoomScale
-        )
-    }
+private struct DeliveredSourceFrame {
+    let frame: ScreenCaptureSourceFrame
+    let capturedAt: Date
+    let isRepeated: Bool
 }

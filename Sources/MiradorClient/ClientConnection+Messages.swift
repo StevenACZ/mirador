@@ -57,6 +57,8 @@ extension ClientConnection {
             onHostStatus?(status)
         case let .previewFrame(frame):
             onPreviewFrame?(frame)
+        case let .videoFrame(frame):
+            onVideoFrame?(frame)
         case let .streamStats(stats):
             onStreamStats?(stats)
         case let .error(error):

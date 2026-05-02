@@ -53,7 +53,7 @@ extension HostClientSession {
             onPreviewStopped?(self)
         case let .remoteInput(event):
             handleRemoteInput(event)
-        case .authenticationResult, .previewFrame, .streamStats, .error:
+        case .authenticationResult, .previewFrame, .videoFrame, .streamStats, .error:
             break
         }
     }

@@ -71,9 +71,10 @@ struct HostStatusSidebarView: View {
     private var statsSummary: String {
         controller.streamStats.map {
             String(
-                format: "%.0f/%d FPS / %.0f kbps",
-                $0.effectiveFramesPerSecond,
+                format: "%.0f/%d sent / %.0f src / %.0f kbps",
+                $0.sentFramesPerSecond,
                 $0.targetFrameRate,
+                $0.sourceFramesPerSecond,
                 $0.bitrateKilobitsPerSecond
             )
         } ?? "Waiting for stream"

@@ -13,18 +13,27 @@ struct RemoteViewerView: View {
         ZStack {
             Color.black.ignoresSafeArea()
 
-            if let frame = store.latestFrame {
+            if let frameInfo = store.latestStreamFrameInfo {
                 GeometryReader { geometry in
-                    let imageSize = fittedImageSize(for: frame, in: geometry.size)
-                    let transform = previewTransform(for: frame, imageSize: imageSize)
+                    let imageSize = fittedImageSize(for: frameInfo, in: geometry.size)
+                    let transform = previewTransform(for: frameInfo, imageSize: imageSize)
 
                     ZStack {
-                        PreviewImageView(frame: frame)
-                            .aspectRatio(CGFloat(frame.width) / CGFloat(frame.height), contentMode: .fit)
-                            .frame(width: imageSize.width, height: imageSize.height)
-                            .scaleEffect(transform.scale)
-                            .offset(transform.offset)
-                            .clipped()
+                        if let frame = store.latestFrame {
+                            PreviewImageView(frame: frame)
+                                .aspectRatio(CGFloat(frame.width) / CGFloat(frame.height), contentMode: .fit)
+                                .frame(width: imageSize.width, height: imageSize.height)
+                                .scaleEffect(transform.scale)
+                                .offset(transform.offset)
+                                .clipped()
+                        } else {
+                            VideoFrameSurface(store: store)
+                                .aspectRatio(CGFloat(frameInfo.width) / CGFloat(frameInfo.height), contentMode: .fit)
+                                .frame(width: imageSize.width, height: imageSize.height)
+                                .scaleEffect(transform.scale)
+                                .offset(transform.offset)
+                                .clipped()
+                        }
 
                         RemoteViewerGestureSurface(
                             zoomScale: store.zoomScale,
@@ -106,7 +115,7 @@ struct RemoteViewerView: View {
         dismiss()
     }
 
-    private func fittedImageSize(for frame: PreviewFrame, in containerSize: CGSize) -> CGSize {
+    private func fittedImageSize(for frame: StreamFrameInfo, in containerSize: CGSize) -> CGSize {
         guard frame.width > 0, frame.height > 0, containerSize.width > 0, containerSize.height > 0 else {
             return .zero
         }
@@ -119,7 +128,7 @@ struct RemoteViewerView: View {
         return CGSize(width: containerSize.height * aspectRatio, height: containerSize.height)
     }
 
-    private func previewTransform(for frame: PreviewFrame, imageSize: CGSize) -> (scale: CGFloat, offset: CGSize) {
+    private func previewTransform(for frame: StreamFrameInfo, imageSize: CGSize) -> (scale: CGFloat, offset: CGSize) {
         let desiredViewport = PreviewViewport.cropped(
             zoomScale: store.zoomScale,
             centerX: store.viewportCenterX,

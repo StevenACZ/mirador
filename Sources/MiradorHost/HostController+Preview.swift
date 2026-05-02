@@ -48,6 +48,7 @@ extension HostController {
         if isUpdatingActivePreview {
             if previousDisplayID != selectedDisplayID || previousVideoSettings != videoSettings {
                 metricsTracker.reset()
+                videoEncoder.invalidate()
                 streamStats = nil
                 skippedPreviewFrames = 0
             }
@@ -99,6 +100,7 @@ extension HostController {
         activePreviewSessionID = nil
         streamStats = nil
         skippedPreviewFrames = 0
+        videoEncoder.invalidate()
         Task { @MainActor in
             await self.captureService.stopCapture()
             await self.updateSystemAudioCapture()
@@ -148,6 +150,14 @@ extension HostController {
     }
 
     private func sendNextPreviewFrame(to session: HostClientSession) async throws {
+        if videoSettings.codec == .jpeg {
+            try await sendNextJPEGFrame(to: session)
+        } else {
+            try await sendNextEncodedVideoFrame(to: session)
+        }
+    }
+
+    private func sendNextJPEGFrame(to session: HostClientSession) async throws {
         let sequence = nextFrameSequence
         nextFrameSequence += 1
         let capturedFrame = try await captureService.capturePreviewFrame(
@@ -162,6 +172,53 @@ extension HostController {
         let sendStartedAt = Date()
         try await session.sendPreviewFrame(frame)
         let sendDuration = Date().timeIntervalSince(sendStartedAt) * 1_000
+        await publishSentFrame(
+            StreamFrameRecord(previewFrame: frame),
+            captureDuration: captureDuration,
+            waitDuration: waitDuration,
+            sendDuration: sendDuration,
+            session: session
+        )
+    }
+
+    private func sendNextEncodedVideoFrame(to session: HostClientSession) async throws {
+        let sequence = nextFrameSequence
+        nextFrameSequence += 1
+        let sourceFrame = try await captureService.captureSourceFrame(
+            displayID: selectedDisplayID,
+            videoSettings: videoSettings,
+            viewport: previewViewport,
+            repeatsLatestFrame: true
+        )
+        let encodeStartedAt = Date()
+        let frame = try await videoEncoder.encode(
+            sourceFrame: sourceFrame,
+            sequence: sequence,
+            settings: videoSettings
+        )
+        let captureDuration = Date().timeIntervalSince(encodeStartedAt) * 1_000
+        let sendStartedAt = Date()
+        try await session.sendVideoFrame(frame)
+        let sendDuration = Date().timeIntervalSince(sendStartedAt) * 1_000
+        await publishSentFrame(
+            StreamFrameRecord(
+                videoFrame: frame,
+                isRepeatedSourceFrame: sourceFrame.isRepeatedSourceFrame
+            ),
+            captureDuration: captureDuration,
+            waitDuration: sourceFrame.waitDurationMilliseconds,
+            sendDuration: sendDuration,
+            session: session
+        )
+    }
+
+    private func publishSentFrame(
+        _ frame: StreamFrameRecord,
+        captureDuration: Double,
+        waitDuration: Double,
+        sendDuration: Double,
+        session: HostClientSession
+    ) async {
         streamedFrameTotal += 1
         publishStreamProgressIfNeeded(frame: frame)
         logSlowFrameIfNeeded(frame: frame, captureDuration: captureDuration, sendDuration: sendDuration)
@@ -177,12 +234,12 @@ extension HostController {
             await refreshSystemAudioStatus()
             session.sendHostStatus(hostStatus(isCaptureActive: true))
             MiradorHostLog.stream.info(
-                "stream stats fps=\(stats.effectiveFramesPerSecond, privacy: .public) target=\(stats.targetFrameRate, privacy: .public) kbps=\(stats.bitrateKilobitsPerSecond, privacy: .public) waitMs=\(stats.captureWaitDurationMilliseconds, privacy: .public) encodeMs=\(stats.captureDurationMilliseconds, privacy: .public) sendMs=\(stats.sendDurationMilliseconds, privacy: .public) dropRate=\(stats.sourceDropRate, privacy: .public) dropped=\(stats.sourceFramesDropped, privacy: .public) bytes=\(stats.lastFrameBytes, privacy: .public) display=\(String(describing: stats.displayID), privacy: .public)"
+                "stream stats codec=\(stats.codec.rawValue, privacy: .public) sentFPS=\(stats.sentFramesPerSecond, privacy: .public) sourceFPS=\(stats.sourceFramesPerSecond, privacy: .public) target=\(stats.targetFrameRate, privacy: .public) kbps=\(stats.bitrateKilobitsPerSecond, privacy: .public) waitMs=\(stats.captureWaitDurationMilliseconds, privacy: .public) encodeMs=\(stats.captureDurationMilliseconds, privacy: .public) sendMs=\(stats.sendDurationMilliseconds, privacy: .public) repeatRate=\(stats.repeatedFrameRate, privacy: .public) repeated=\(stats.repeatedFrames, privacy: .public) dropRate=\(stats.sourceDropRate, privacy: .public) dropped=\(stats.sourceFramesDropped, privacy: .public) bytes=\(stats.lastFrameBytes, privacy: .public) display=\(String(describing: stats.displayID), privacy: .public)"
             )
         }
     }
 
-    private func publishStreamProgressIfNeeded(frame: PreviewFrame) {
+    private func publishStreamProgressIfNeeded(frame: StreamFrameRecord) {
         let now = Date()
         guard
             streamedFrameTotal == 1
@@ -215,27 +272,14 @@ extension HostController {
     }
 
     private func logSlowFrameIfNeeded(
-        frame: PreviewFrame,
+        frame: StreamFrameRecord,
         captureDuration: Double,
         sendDuration: Double
     ) {
-        let frameBudget = 1_000 / Double(max(frame.qualityProfile.targetFrameRate, 1))
+        let frameBudget = 1_000 / Double(max(videoSettings.targetFrameRate, 1))
         guard captureDuration + sendDuration > frameBudget else { return }
         MiradorHostLog.stream.debug(
-            "slow frame seq=\(frame.sequence, privacy: .public) source=\(frame.sourceFrameNumber, privacy: .public) sourceDropped=\(frame.sourceFramesDropped, privacy: .public) profile=\(frame.qualityProfile.rawValue, privacy: .public) encodeMs=\(captureDuration, privacy: .public) sendMs=\(sendDuration, privacy: .public) budgetMs=\(frameBudget, privacy: .public) bytes=\(frame.jpegData.count, privacy: .public) viewport=\(frame.viewport.logSummary, privacy: .public)"
-        )
-    }
-}
-
-private extension PreviewViewport {
-    var logSummary: String {
-        String(
-            format: "x=%.3f y=%.3f w=%.3f h=%.3f z=%.2f",
-            normalizedX,
-            normalizedY,
-            normalizedWidth,
-            normalizedHeight,
-            zoomScale
+            "slow frame seq=\(frame.sequence, privacy: .public) source=\(frame.sourceFrameNumber, privacy: .public) repeated=\(frame.isRepeatedSourceFrame, privacy: .public) sourceDropped=\(frame.sourceFramesDropped, privacy: .public) codec=\(frame.codec.rawValue, privacy: .public) profile=\(frame.qualityProfile.rawValue, privacy: .public) encodeMs=\(captureDuration, privacy: .public) sendMs=\(sendDuration, privacy: .public) budgetMs=\(frameBudget, privacy: .public) bytes=\(frame.byteCount, privacy: .public) viewport=\(frame.viewport.logSummary, privacy: .public)"
         )
     }
 }

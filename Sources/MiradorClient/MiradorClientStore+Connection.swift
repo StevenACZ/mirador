@@ -21,10 +21,8 @@ extension MiradorClientStore {
         connectionStatus = "Connecting"
         authenticationStatus = "Starting local session"
         isAuthenticated = false
-        latestFrame = nil
-        receivedFrames = 0
+        resetRenderedStreamFrames()
         streamStats = nil
-        lastFrameLatencyMilliseconds = nil
         systemAudioStatus = .unavailable
         isPreviewActive = false
         remoteControlStatus = "Control disabled"
@@ -92,6 +90,7 @@ extension MiradorClientStore {
             Task { @MainActor in
                 guard let self else { return }
                 self.latestFrame = frame
+                self.latestVideoFrameInfo = nil
                 self.receivedFrames += 1
                 self.isPreviewActive = true
                 let now = Date()
@@ -108,11 +107,40 @@ extension MiradorClientStore {
                 }
             }
         }
+        connection.onVideoFrame = { [weak self] frame in
+            Task { @MainActor in
+                guard let self else { return }
+                self.enqueueVideoFrame(frame)
+                self.latestFrame = nil
+                self.receivedFrames += 1
+                self.isPreviewActive = true
+                let now = Date()
+                let shouldPublishInfo = self.latestVideoFrameInfo == nil
+                    || self.receivedFrames.isMultiple(of: 15)
+                    || self.latestVideoFrameInfo?.codec != frame.codec
+                    || self.latestVideoFrameInfo?.width != frame.width
+                    || self.latestVideoFrameInfo?.height != frame.height
+                    || self.latestVideoFrameInfo?.displayID != frame.displayID
+
+                if shouldPublishInfo {
+                    self.latestVideoFrameInfo = StreamFrameInfo(videoFrame: frame)
+                    self.lastFrameLatencyMilliseconds = now.timeIntervalSince(frame.capturedAt) * 1_000
+                }
+                if self.connectionStatus != "Receiving preview" {
+                    self.connectionStatus = "Receiving preview"
+                }
+                if self.receivedFrames == 1 || self.receivedFrames.isMultiple(of: 60) {
+                    MiradorClientLog.stream.info(
+                        "video frames received=\(self.receivedFrames, privacy: .public) codec=\(frame.codec.rawValue, privacy: .public) seq=\(frame.sequence, privacy: .public) keyframe=\(frame.isKeyframe, privacy: .public) source=\(frame.sourceFrameNumber, privacy: .public) sourceDropped=\(frame.sourceFramesDropped, privacy: .public) bytes=\(frame.data.count, privacy: .public) latencyMs=\(self.lastFrameLatencyMilliseconds ?? 0, privacy: .public) display=\(String(describing: frame.displayID), privacy: .public)"
+                    )
+                }
+            }
+        }
         connection.onStreamStats = { [weak self] stats in
             Task { @MainActor in
                 self?.streamStats = stats
                 MiradorClientLog.stream.info(
-                    "stream stats fps=\(stats.effectiveFramesPerSecond, privacy: .public) target=\(stats.targetFrameRate, privacy: .public) kbps=\(stats.bitrateKilobitsPerSecond, privacy: .public) waitMs=\(stats.captureWaitDurationMilliseconds, privacy: .public) encodeMs=\(stats.captureDurationMilliseconds, privacy: .public) sendMs=\(stats.sendDurationMilliseconds, privacy: .public) dropRate=\(stats.sourceDropRate, privacy: .public) dropped=\(stats.sourceFramesDropped, privacy: .public)"
+                    "stream stats codec=\(stats.codec.rawValue, privacy: .public) sentFPS=\(stats.sentFramesPerSecond, privacy: .public) sourceFPS=\(stats.sourceFramesPerSecond, privacy: .public) target=\(stats.targetFrameRate, privacy: .public) kbps=\(stats.bitrateKilobitsPerSecond, privacy: .public) waitMs=\(stats.captureWaitDurationMilliseconds, privacy: .public) encodeMs=\(stats.captureDurationMilliseconds, privacy: .public) sendMs=\(stats.sendDurationMilliseconds, privacy: .public) repeatRate=\(stats.repeatedFrameRate, privacy: .public) repeated=\(stats.repeatedFrames, privacy: .public) dropRate=\(stats.sourceDropRate, privacy: .public) dropped=\(stats.sourceFramesDropped, privacy: .public)"
                 )
             }
         }

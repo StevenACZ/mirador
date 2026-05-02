@@ -63,21 +63,25 @@ public struct StreamVideoSettings: Codable, Equatable, Sendable {
     public let resolution: StreamResolutionPreset
     public let frameRate: StreamFrameRatePreset
     public let bitrateMegabitsPerSecond: Double
+    public let codec: StreamCodec
 
     private enum CodingKeys: String, CodingKey {
         case resolution
         case frameRate
         case bitrateMegabitsPerSecond
+        case codec
     }
 
     public init(
-        resolution: StreamResolutionPreset = .p720,
+        resolution: StreamResolutionPreset = .p1080,
         frameRate: StreamFrameRatePreset = .fps60,
-        bitrateMegabitsPerSecond: Double = 8
+        bitrateMegabitsPerSecond: Double = 12,
+        codec: StreamCodec = .h264
     ) {
         self.resolution = resolution
         self.frameRate = frameRate
         self.bitrateMegabitsPerSecond = Self.clampedBitrate(bitrateMegabitsPerSecond)
+        self.codec = codec
     }
 
     public init(from decoder: Decoder) throws {
@@ -94,7 +98,8 @@ public struct StreamVideoSettings: Codable, Equatable, Sendable {
             bitrateMegabitsPerSecond: try container.decodeIfPresent(
                 Double.self,
                 forKey: .bitrateMegabitsPerSecond
-            ) ?? 8
+            ) ?? 12,
+            codec: try container.decodeIfPresent(StreamCodec.self, forKey: .codec) ?? .h264
         )
     }
 
@@ -103,7 +108,7 @@ public struct StreamVideoSettings: Codable, Equatable, Sendable {
         case .balanced:
             self.init(resolution: .p1080, frameRate: .fps30, bitrateMegabitsPerSecond: 12)
         case .smooth:
-            self.init(resolution: .p720, frameRate: .fps60, bitrateMegabitsPerSecond: 8)
+            self.init(resolution: .p1080, frameRate: .fps60, bitrateMegabitsPerSecond: 12)
         case .sharp:
             self.init(resolution: .p1440, frameRate: .fps30, bitrateMegabitsPerSecond: 25)
         }
@@ -142,7 +147,7 @@ public struct StreamVideoSettings: Codable, Equatable, Sendable {
     }
 
     public var summary: String {
-        "\(resolution.displayName) / \(frameRate.displayName) / \(Self.bitrateLabel(bitrateMegabitsPerSecond))"
+        "\(codec.displayName) / \(resolution.displayName) / \(frameRate.displayName) / \(Self.bitrateLabel(bitrateMegabitsPerSecond))"
     }
 
     public static func bitrateLabel(_ bitrate: Double) -> String {

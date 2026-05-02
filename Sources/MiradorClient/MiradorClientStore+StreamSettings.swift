@@ -4,6 +4,7 @@ import MiradorCore
 extension MiradorClientStore {
     public func updateSelectedDisplay(_ displayID: UInt32?) {
         selectedDisplayID = displayID
+        resetRenderedStreamFrames()
         MiradorClientLog.stream.info(
             "selected display changed display=\(String(describing: displayID), privacy: .public)"
         )
@@ -11,7 +12,26 @@ extension MiradorClientStore {
     }
 
     public func updateQualityProfile(_ profile: StreamQualityProfile) {
-        updateVideoSettings(StreamVideoSettings(qualityProfile: profile))
+        let profileSettings = StreamVideoSettings(qualityProfile: profile)
+        updateVideoSettings(
+            StreamVideoSettings(
+                resolution: profileSettings.resolution,
+                frameRate: profileSettings.frameRate,
+                bitrateMegabitsPerSecond: profileSettings.bitrateMegabitsPerSecond,
+                codec: selectedVideoSettings.codec
+            )
+        )
+    }
+
+    public func updateCodec(_ codec: StreamCodec) {
+        updateVideoSettings(
+            StreamVideoSettings(
+                resolution: selectedVideoSettings.resolution,
+                frameRate: selectedVideoSettings.frameRate,
+                bitrateMegabitsPerSecond: selectedVideoSettings.bitrateMegabitsPerSecond,
+                codec: codec
+            )
+        )
     }
 
     public func updateResolutionPreset(_ resolution: StreamResolutionPreset) {
@@ -19,7 +39,8 @@ extension MiradorClientStore {
             StreamVideoSettings(
                 resolution: resolution,
                 frameRate: selectedVideoSettings.frameRate,
-                bitrateMegabitsPerSecond: selectedVideoSettings.bitrateMegabitsPerSecond
+                bitrateMegabitsPerSecond: selectedVideoSettings.bitrateMegabitsPerSecond,
+                codec: selectedVideoSettings.codec
             )
         )
     }
@@ -29,7 +50,8 @@ extension MiradorClientStore {
             StreamVideoSettings(
                 resolution: selectedVideoSettings.resolution,
                 frameRate: frameRate,
-                bitrateMegabitsPerSecond: selectedVideoSettings.bitrateMegabitsPerSecond
+                bitrateMegabitsPerSecond: selectedVideoSettings.bitrateMegabitsPerSecond,
+                codec: selectedVideoSettings.codec
             )
         )
     }
@@ -39,13 +61,19 @@ extension MiradorClientStore {
             StreamVideoSettings(
                 resolution: selectedVideoSettings.resolution,
                 frameRate: selectedVideoSettings.frameRate,
-                bitrateMegabitsPerSecond: bitrate
+                bitrateMegabitsPerSecond: bitrate,
+                codec: selectedVideoSettings.codec
             )
         )
     }
 
     public func updateVideoSettings(_ settings: StreamVideoSettings) {
+        let shouldResetSurface = settings.codec != selectedVideoSettings.codec
+            || settings.resolution != selectedVideoSettings.resolution
         selectedVideoSettings = settings
+        if shouldResetSurface {
+            resetRenderedStreamFrames()
+        }
         MiradorClientLog.stream.info(
             "video settings changed settings=\(settings.summary, privacy: .public)"
         )

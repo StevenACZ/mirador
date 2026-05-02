@@ -6,6 +6,7 @@ public enum SignalingMessage: Codable, Equatable, Sendable {
     case authenticationResult(AuthenticationResult)
     case startPreview(DisplaySelection)
     case previewFrame(PreviewFrame)
+    case videoFrame(EncodedVideoFrame)
     case streamStats(StreamStats)
     case remoteInput(RemoteInputEvent)
     case stopPreview
@@ -22,6 +23,7 @@ public enum SignalingMessage: Codable, Equatable, Sendable {
         case authenticationResult
         case startPreview
         case previewFrame
+        case videoFrame
         case streamStats
         case remoteInput
         case stopPreview
@@ -43,6 +45,8 @@ public enum SignalingMessage: Codable, Equatable, Sendable {
             self = .startPreview(try container.decode(DisplaySelection.self, forKey: .payload))
         case .previewFrame:
             self = .previewFrame(try container.decode(PreviewFrame.self, forKey: .payload))
+        case .videoFrame:
+            self = .videoFrame(try container.decode(EncodedVideoFrame.self, forKey: .payload))
         case .streamStats:
             self = .streamStats(try container.decode(StreamStats.self, forKey: .payload))
         case .remoteInput:
@@ -72,6 +76,9 @@ public enum SignalingMessage: Codable, Equatable, Sendable {
             try container.encode(payload, forKey: .payload)
         case let .previewFrame(payload):
             try container.encode(MessageType.previewFrame, forKey: .type)
+            try container.encode(payload, forKey: .payload)
+        case let .videoFrame(payload):
+            try container.encode(MessageType.videoFrame, forKey: .type)
             try container.encode(payload, forKey: .payload)
         case let .streamStats(payload):
             try container.encode(MessageType.streamStats, forKey: .type)

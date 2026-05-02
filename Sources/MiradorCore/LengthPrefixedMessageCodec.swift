@@ -14,6 +14,8 @@ public enum LengthPrefixedMessageCodec {
         switch message {
         case let .previewFrame(frame):
             payload = try PreviewFrameBinaryPayloadCodec.encode(frame)
+        case let .videoFrame(frame):
+            payload = try EncodedVideoFrameBinaryPayloadCodec.encode(frame)
         default:
             payload = try JSONEncoder.mirador.encode(message)
         }
@@ -29,6 +31,11 @@ public enum LengthPrefixedMessageCodec {
         if type == SignalingMessage.self, PreviewFrameBinaryPayloadCodec.isBinaryPayload(payload) {
             let frame = try PreviewFrameBinaryPayloadCodec.decode(payload)
             return SignalingMessage.previewFrame(frame) as! Message
+        }
+
+        if type == SignalingMessage.self, EncodedVideoFrameBinaryPayloadCodec.isBinaryPayload(payload) {
+            let frame = try EncodedVideoFrameBinaryPayloadCodec.decode(payload)
+            return SignalingMessage.videoFrame(frame) as! Message
         }
 
         return try JSONDecoder.mirador.decode(type, from: payload)

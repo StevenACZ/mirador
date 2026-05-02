@@ -52,4 +52,34 @@ struct LengthPrefixedMessageCodecTests {
         let decoded = try LengthPrefixedMessageCodec.decode(SignalingMessage.self, from: payload)
         #expect(decoded == message)
     }
+
+    @Test("Round-trips encoded video frame payloads")
+    func videoFrameRoundTrip() throws {
+        let format = VideoFormatMetadata(
+            parameterSets: [Data([0x01, 0x64]), Data([0x02, 0xAC])],
+            nalUnitHeaderLength: 4
+        )
+        let frame = EncodedVideoFrame(
+            codec: .h264,
+            sequence: 42,
+            capturedAt: Date(timeIntervalSince1970: 12),
+            width: 1_920,
+            height: 1_080,
+            displayID: 3,
+            qualityProfile: .smooth,
+            viewport: .centered(zoomScale: 2),
+            sourceFrameNumber: 60,
+            sourceFramesDropped: 2,
+            isKeyframe: true,
+            format: format,
+            data: Data([0x00, 0x00, 0x00, 0x05, 0x65])
+        )
+        let message = SignalingMessage.videoFrame(frame)
+        let packet = try LengthPrefixedMessageCodec.encode(message)
+        let payload = packet.dropFirst(LengthPrefixedMessageCodec.headerLength)
+
+        #expect(EncodedVideoFrameBinaryPayloadCodec.isBinaryPayload(Data(payload)))
+        let decoded = try LengthPrefixedMessageCodec.decode(SignalingMessage.self, from: Data(payload))
+        #expect(decoded == message)
+    }
 }

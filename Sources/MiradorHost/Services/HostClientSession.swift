@@ -56,6 +56,11 @@ final class HostClientSession: @unchecked Sendable, Identifiable {
         try await sendAndWait(.previewFrame(frame))
     }
 
+    func sendVideoFrame(_ frame: EncodedVideoFrame) async throws {
+        guard isAuthenticated else { throw CancellationError() }
+        try await sendAndWait(.videoFrame(frame))
+    }
+
     func sendStreamStats(_ stats: StreamStats) {
         guard isAuthenticated else { return }
         send(.streamStats(stats))

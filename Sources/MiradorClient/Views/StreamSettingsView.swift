@@ -16,6 +16,14 @@ struct StreamSettingsView: View {
         }
         .disabled(!isAuthenticated || store.availableDisplays.isEmpty)
 
+        Picker("Codec", selection: codecSelection) {
+            ForEach([StreamCodec.h264, .hevc, .jpeg]) { codec in
+                Text(codec.displayName).tag(codec)
+            }
+        }
+        .pickerStyle(.segmented)
+        .disabled(!isAuthenticated)
+
         Picker("Resolution", selection: resolutionSelection) {
             ForEach(StreamResolutionPreset.allCases) { resolution in
                 Text(resolution.displayName).tag(resolution)
@@ -70,7 +78,7 @@ struct StreamSettingsView: View {
             .disabled(!isAuthenticated)
 
             if let stats = store.streamStats {
-                Text("Actual \(stats.bitrateKilobitsPerSecond / 1_000, specifier: "%.1f") Mbps")
+                Text("Actual \(stats.sentFramesPerSecond, specifier: "%.0f") sent FPS / \(stats.sourceFramesPerSecond, specifier: "%.0f") source FPS / \(stats.bitrateKilobitsPerSecond / 1_000, specifier: "%.1f") Mbps")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
@@ -91,6 +99,14 @@ struct StreamSettingsView: View {
             store.selectedVideoSettings.resolution
         } set: { newValue in
             store.updateResolutionPreset(newValue)
+        }
+    }
+
+    private var codecSelection: Binding<StreamCodec> {
+        Binding {
+            store.selectedVideoSettings.codec
+        } set: { newValue in
+            store.updateCodec(newValue)
         }
     }
 

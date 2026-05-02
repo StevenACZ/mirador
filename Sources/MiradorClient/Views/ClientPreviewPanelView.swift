@@ -7,18 +7,13 @@ struct ClientPreviewPanelView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            PreviewFrameView(
-                frame: store.latestFrame,
-                count: store.receivedFrames,
-                stats: store.streamStats,
-                latencyMilliseconds: store.lastFrameLatencyMilliseconds
-            )
+            PreviewFrameView(store: store)
 
             Button(action: onEnterFullScreen) {
                 Label("Enter Full Screen", systemImage: "arrow.up.left.and.arrow.down.right")
             }
             .buttonStyle(.borderedProminent)
-            .disabled(!isAuthenticated || store.latestFrame == nil)
+            .disabled(!isAuthenticated || !store.hasRenderableStream)
         }
     }
 }

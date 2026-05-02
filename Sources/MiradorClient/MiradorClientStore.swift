@@ -15,6 +15,7 @@ public final class MiradorClientStore {
     public internal(set) var hostStatus: HostStatus?
     public internal(set) var availableDisplays: [DisplayDescriptor] = []
     public internal(set) var latestFrame: PreviewFrame?
+    public internal(set) var latestVideoFrameInfo: StreamFrameInfo?
     public internal(set) var receivedFrames = 0
     public internal(set) var streamStats: StreamStats?
     public internal(set) var lastFrameLatencyMilliseconds: Double?
@@ -35,6 +36,18 @@ public final class MiradorClientStore {
     @ObservationIgnored var nextInputSequence: UInt64 = 0
     @ObservationIgnored var sentInputEventTotal = 0
     @ObservationIgnored var lastPointerInputUIUpdate = Date.distantPast
+    @ObservationIgnored var videoFrameRenderers: [ObjectIdentifier: any VideoFrameRendering] = [:]
+
+    public var latestStreamFrameInfo: StreamFrameInfo? {
+        if let latestFrame {
+            return StreamFrameInfo(previewFrame: latestFrame)
+        }
+        return latestVideoFrameInfo
+    }
+
+    public var hasRenderableStream: Bool {
+        latestStreamFrameInfo != nil
+    }
 
     public init() {}
 

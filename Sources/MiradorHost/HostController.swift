@@ -28,6 +28,7 @@ public final class HostController {
 
     @ObservationIgnored let advertiser = BonjourHostAdvertiser()
     @ObservationIgnored let captureService = ScreenCaptureService()
+    @ObservationIgnored let videoEncoder = VideoToolboxEncoder()
     @ObservationIgnored let systemAudioCaptureService = SystemAudioCaptureService()
     @ObservationIgnored let inputControlService = InputControlService()
     @ObservationIgnored var previewTask: Task<Void, Never>?
